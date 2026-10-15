@@ -1,0 +1,6 @@
+pywebview>=6.0,<7
+httpx>=0.28,<1
+keyring>=25.6,<26
+pyinstaller>=6.16,<7
+pytest>=8.4,<10
+ruff>=0.12,<1
