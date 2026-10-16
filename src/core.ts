@@ -81,6 +81,17 @@ export function nextSteps(n: Notebook, target: string, path: string[]) {
   const blocked = new Set(path);
   return neighbors(n, path.at(-1)!).filter(x => !blocked.has(x.id) && reachable(n, [x.id], false, blocked).has(target)).map(x => x.id);
 }
+export function allProofPaths(n: Notebook, target: string, limit = 200) {
+  const result: string[][] = [];
+  const walk = (path: string[]) => {
+    if (result.length >= limit) return;
+    const current = path.at(-1)!;
+    if (current === target) { result.push(path); return; }
+    neighbors(n, current).forEach(next => { if (!path.includes(next.id)) walk([...path, next.id]); });
+  };
+  n.nodes.filter(u => u.tags.includes('fact')).forEach(u => walk([u.id]));
+  return result;
+}
 export function validPath(n: Pick<Notebook, 'nodes' | 'edges'>, target: string, ids: string[], edgeIds?: string[]) {
   if (!ids.length || ids.at(-1) !== target || new Set(ids).size !== ids.length || !n.nodes.find(u => u.id === ids[0])?.tags.includes('fact')) return false;
   return ids.every((id, i) => n.nodes.some(u => u.id === id) && (!i || neighbors(n, ids[i - 1]).some(x => x.id === id && (!edgeIds || x.edge === edgeIds[i - 1])))) && (!edgeIds || edgeIds.length === ids.length - 1);
