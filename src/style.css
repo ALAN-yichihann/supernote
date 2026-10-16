@@ -4,3 +4,5 @@
 .fact-checks{display:grid;gap:7px;margin-top:10px}.fact-checks label{display:flex;gap:7px;align-items:center;padding:7px 8px;border-radius:6px;background:#f7faff;color:#577493;font-size:11px}.fact-checks input{accent-color:#397ed2}
 .fact-checks{display:grid;gap:7px;margin-top:10px}.fact-checks label{display:flex;gap:7px;align-items:center;padding:7px 8px;border-radius:6px;background:#f7faff;color:#577493;font-size:11px}.fact-checks input{accent-color:#397ed2}
 .fact-checks{display:grid;gap:7px;margin-top:10px}.fact-checks label{display:flex;gap:7px;align-items:center;padding:7px 8px;border-radius:6px;background:#f7faff;color:#577493;font-size:11px}.fact-checks input{accent-color:#397ed2}
+
+.unit-group .unit-card:first-child:hover{box-shadow:0 0 0 4px #397ed2,0 0 0 8px #397ed233,0 8px 22px #6f94be30;border-color:#397ed2;z-index:4}.settings-editor fieldset{border:1px solid #dce7f2;border-radius:10px;margin:14px 0;padding:4px 14px 10px}.settings-editor legend{padding:0 6px;color:#527498;font-weight:650}.settings-editor label{margin:8px 0}.proof-panel .panel-header{min-height:70px}.proof-panel .panel-title .eyebrow{margin-left:0}

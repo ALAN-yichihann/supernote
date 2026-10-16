@@ -28,9 +28,14 @@ class API:
     def reset_file(self)->dict[str,Any]: self.storage.path=None; self.dirty_value=False; return {'ok':True,'value':None}
     def dirty(self,value:bool)->None:self.dirty_value=value
     def close_window(self)->None:self.window.destroy()
-    def get_settings(self)->dict[str,Any]:return {'ok':True,'value':{'qa':{'endpoint':'','model':''},'graph':{'endpoint':'','model':''}}}
+    def get_settings(self)->dict[str,Any]:
+        return {'ok':True,'value':{ident:{'endpoint':self.storage.get_secret(f'{ident}_endpoint') or '', 'model':self.storage.get_secret(f'{ident}_model') or '', 'hasKey':bool(self.storage.get_secret(f'{ident}_key'))} for ident in ('qa','graph')}}
     def save_settings(self,value:dict[str,Any])->dict[str,Any]:
-        for ident in ('qa','graph'): self.storage.set_secret(f'{ident}_key',str(value.get(ident,{}).get('key','')))
+        for ident in ('qa','graph'):
+            entry=value.get(ident,{})
+            self.storage.set_secret(f'{ident}_endpoint',str(entry.get('endpoint','')))
+            self.storage.set_secret(f'{ident}_model',str(entry.get('model','')))
+            if entry.get('key'): self.storage.set_secret(f'{ident}_key',str(entry['key']))
         return {'ok':True,'value':None}
 def main()->None:
     parser=argparse.ArgumentParser(); parser.add_argument('--dev',action='store_true'); args=parser.parse_args(); api=API(args.dev); url='http://127.0.0.1:5173' if args.dev else str(Path(__file__).resolve().parents[1]/'dist'/'index.html'); window=webview.create_window('Supernote',url,js_api=api,width=1440,height=900,min_size=(1000,650)); api.window=window; webview.start(debug=args.dev)
