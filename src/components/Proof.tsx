@@ -16,7 +16,9 @@ export default function ProofView({ target, close }: { target: string; close: ()
   const choices = useMemo(() => nextSteps(note, target, path), [note, target, path]);
   const complete = validPath(note, target, path);
   const proof: Proof | null = complete ? snapshot(note, target, path) : null;
-  const content = text || path.map(id => note.nodes.find(n => n.id === id)?.content || '').join('\n\n');
+  const imageContent = path.map(id => note.nodes.find(n => n.id === id)).filter(unit => unit?.image).map((unit, index) => `![推导图片 ${index + 1}](${unit!.image})`).join('\n\n');
+  const generatedContent = path.map(id => note.nodes.find(n => n.id === id)?.content || '').join('\n\n');
+  const content = [imageContent, text || generatedContent].filter(Boolean).join('\n\n');
   const facts = [...new Set(paths.map(candidate => candidate[0]))];
 
   return <div className="proof-panel" style={{ width }}>

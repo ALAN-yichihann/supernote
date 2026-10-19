@@ -8,6 +8,7 @@
 - `src/store.ts`：唯一笔记状态、事务、修改历史和保存状态。
 - `src/components`：导图、推导、AI、设置与编辑器。
 - `desktop`：Python 桌面宿主、原子文件存储、凭据及 AI 服务。
+- `prompts`：可由用户直接编辑的问答 AI 和思维导图 AI Markdown 提示词。
 - `tests`：Python 与浏览器端验收；核心 TypeScript 测试位于源码旁。
 - `examples`：可导入的演示笔记。
 
@@ -19,5 +20,7 @@
 检查：`npm test`、`npm run build`、`python -m pytest`、`python -m ruff check desktop tests`。
 浏览器验收：`npx playwright install chromium` 后执行 `npm run test:e2e`。
 打包：`powershell -ExecutionPolicy Bypass -File scripts/package.ps1`。
+
+提示词修改：编辑 `prompts/qa.md` 或 `prompts/graph.md` 后重新发起 AI 请求即可生效；打包时将提示词目录放在应用目录旁。
 
 修改图数据必须经过核心命令和验证；AI 事务提交前检查原笔记版本，禁止局部提交。密钥只存系统凭据，不得写入笔记或日志。按完成阶段提交 Git。
