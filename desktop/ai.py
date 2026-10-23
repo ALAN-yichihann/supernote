@@ -48,7 +48,7 @@ class AIService:
                         if delta:
                             session.events.put({"type": "text", "text": delta})
                 session.events.put({"type": "done"})
-            except Exception as exc:  # 网络错误需要返回到界面
+            except Exception as exc:  # noqa: BLE001 网络错误需要返回到界面
                 session.events.put({"type": "error", "text": f"AI 请求失败：{exc}"})
 
         session.thread = threading.Thread(target=run, daemon=True)

@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 
 from desktop.prompts import load_prompt
+
+
 def test_prompt_files_are_external_and_editable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     prompt_dir = tmp_path / "prompts"
     prompt_dir.mkdir()

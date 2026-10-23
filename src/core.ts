@@ -6,7 +6,7 @@ export const tagSchema = z.object({ id: identity, name: z.string().min(1), color
 export const domainSchema = z.object({ id: identity, name: z.string().min(1), position: point });
 export const unitSchema = z.object({ id: identity, domainId: identity, content: z.string(), tags: z.array(identity), annotation: z.string().default(''), position: point, image: z.string().startsWith('data:image/').optional() });
 export const edgeSchema = z.object({ id: identity, source: identity, target: identity, direction: z.enum(['single', 'both']) });
-export const proofSchema = z.object({ kind: z.literal('supernote-proof'), version: z.literal(1), id: identity, title: z.string(), notebookId: identity, target: identity, nodeIds: z.array(identity), edgeIds: z.array(identity), nodes: z.array(unitSchema), edges: z.array(edgeSchema) });
+export const proofSchema = z.object({ kind: z.literal('supernote-proof'), version: z.literal(1), id: identity, title: z.string(), notebookId: identity, target: identity, nodeIds: z.array(identity), edgeIds: z.array(identity), order: z.array(identity).optional(), nodes: z.array(unitSchema), edges: z.array(edgeSchema) });
 export const noteSchema = z.object({ kind: z.literal('supernote'), version: z.literal(1), id: identity, title: z.string().min(1), domains: z.array(domainSchema), nodes: z.array(unitSchema), edges: z.array(edgeSchema), tags: z.array(tagSchema), proofs: z.array(proofSchema) });
 export type Unit = z.infer<typeof unitSchema>;
 export type Domain = z.infer<typeof domainSchema>;
@@ -59,53 +59,111 @@ export function applyOperations(note: Notebook, ops: Operation[]): Notebook {
   }
   return validate(next);
 }
-export function neighbors(n: Pick<Notebook, 'edges'>, id: string, reverse = false) {
-  return n.edges.flatMap(e => {
-    const source = reverse ? e.target : e.source, target = reverse ? e.source : e.target;
-    return source === id ? [{ id: target, edge: e.id }] : e.direction === 'both' && target === id ? [{ id: source, edge: e.id }] : [];
-  });
+
+// 推导语义：指向某单位的连接。双向连接对两端都算入连接，可从任一端推导另一端。
+export function incomingLinks(n: Pick<Notebook, 'edges'>, id: string): Link[] {
+  return n.edges.filter(e => e.target === id || (e.direction === 'both' && e.source === id));
 }
-export function reachable(n: Pick<Notebook, 'edges'>, start: string[], reverse = false, blocked = new Set<string>()) {
-  const seen = new Set<string>(), stack = [...start];
-  while (stack.length) { const id = stack.pop()!; if (seen.has(id) || blocked.has(id)) continue; seen.add(id); for (const x of neighbors(n, id, reverse)) stack.push(x.id); }
+export function linkPredecessor(e: Link, id: string) { return e.source === id ? e.target : e.source; }
+function isFact(n: Pick<Notebook, 'nodes'>, id: string) { return !!n.nodes.find(u => u.id === id)?.tags.includes('fact'); }
+export function isConclusion(n: Pick<Notebook, 'nodes'>, id: string) { return !!n.nodes.find(u => u.id === id)?.tags.includes('conclusion'); }
+export const isFactUnit = isFact;
+
+// 反向搜索到基本事实为止，得到推导可能用到的全部单位（用于绘制推导子图）。
+export function proofRegion(n: Notebook, target: string): Set<string> {
+  const seen = new Set<string>(), stack = [target];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (seen.has(id) || !n.nodes.some(u => u.id === id)) continue;
+    seen.add(id);
+    if (isFact(n, id)) continue;
+    for (const e of incomingLinks(n, id)) stack.push(linkPredecessor(e, id));
+  }
   return seen;
 }
-export function proofRegion(n: Notebook, target: string) {
-  const from = reachable(n, n.nodes.filter(u => u.tags.includes('fact')).map(u => u.id));
-  const to = reachable(n, [target], true);
-  return new Set([...from].filter(id => to.has(id)));
+export function regionLinks(n: Notebook, region: Set<string>): Link[] {
+  return n.edges.filter(e => region.has(e.source) && region.has(e.target));
 }
-export function nextSteps(n: Notebook, target: string, path: string[]) {
-  if (!path.length) return n.nodes.filter(u => u.tags.includes('fact') && reachable(n, [u.id]).has(target)).map(u => u.id);
-  if (path.at(-1) === target) return [];
-  const blocked = new Set(path);
-  return neighbors(n, path.at(-1)!).filter(x => !blocked.has(x.id) && reachable(n, [x.id], false, blocked).has(target)).map(x => x.id);
+
+// 推导闭包：结论单位任选一条入连接，其余单位必须满足全部入连接。
+export interface Resolution { nodes: string[]; edges: string[]; deps: [string, string][]; order: string[]; error: string }
+export function resolveProof(n: Notebook, target: string, choices: Record<string, string> = {}): Resolution {
+  const nodes = new Set<string>(), edges = new Set<string>(), deps: [string, string][] = [], stack = [target];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (nodes.has(id)) continue;
+    const unit = n.nodes.find(u => u.id === id);
+    if (!unit) continue;
+    nodes.add(id);
+    if (unit.tags.includes('fact')) continue;
+    const links = incomingLinks(n, id);
+    if (!links.length) continue;
+    const chosen = isConclusion(n, id) ? [links.find(e => e.id === choices[id]) || links[0]] : links;
+    for (const e of chosen) {
+      edges.add(e.id);
+      const pred = linkPredecessor(e, id);
+      deps.push([pred, id]);
+      stack.push(pred);
+    }
+  }
+  const order = topoOrder([...nodes], deps, n);
+  return { nodes: [...nodes], edges: [...edges], deps, order: order || [...nodes], error: order ? '' : '推导连接存在循环，无法确定顺序' };
 }
-export function allProofPaths(n: Notebook, target: string, limit = 200) {
-  const result: string[][] = [];
-  const walk = (path: string[]) => {
-    if (result.length >= limit) return;
-    const current = path.at(-1)!;
-    if (current === target) { result.push(path); return; }
-    neighbors(n, current).forEach(next => { if (!path.includes(next.id)) walk([...path, next.id]); });
-  };
-  n.nodes.filter(u => u.tags.includes('fact')).forEach(u => walk([u.id]));
-  return result;
+
+// 依赖拓扑排序；无依赖关系的单位保持笔记中的原始顺序。
+export function topoOrder(ids: string[], deps: [string, string][], n?: Pick<Notebook, 'nodes'>): string[] | null {
+  const rank = (id: string) => n ? n.nodes.findIndex(u => u.id === id) : 0;
+  const indegree = new Map(ids.map(id => [id, 0])), outgoing = new Map<string, string[]>();
+  for (const [from, to] of deps) {
+    if (!indegree.has(from) || !indegree.has(to)) continue;
+    outgoing.set(from, [...(outgoing.get(from) || []), to]);
+    indegree.set(to, (indegree.get(to) || 0) + 1);
+  }
+  const queue = ids.filter(id => indegree.get(id) === 0).sort((a, b) => rank(a) - rank(b)), result: string[] = [];
+  while (queue.length) {
+    const id = queue.shift()!;
+    result.push(id);
+    for (const next of outgoing.get(id) || []) {
+      const left = (indegree.get(next) || 0) - 1;
+      indegree.set(next, left);
+      if (!left) queue.push(next);
+    }
+    queue.sort((a, b) => rank(a) - rank(b));
+  }
+  return result.length === ids.length ? result : null;
 }
-export function validPath(n: Pick<Notebook, 'nodes' | 'edges'>, target: string, ids: string[], edgeIds?: string[]) {
-  if (!ids.length || ids.at(-1) !== target || new Set(ids).size !== ids.length || !n.nodes.find(u => u.id === ids[0])?.tags.includes('fact')) return false;
-  return ids.every((id, i) => n.nodes.some(u => u.id === id) && (!i || neighbors(n, ids[i - 1]).some(x => x.id === id && (!edgeIds || x.edge === edgeIds[i - 1])))) && (!edgeIds || edgeIds.length === ids.length - 1);
+export function validOrder(order: string[], deps: [string, string][]) {
+  const index = new Map(order.map((id, i) => [id, i]));
+  return deps.every(([from, to]) => index.has(from) && index.has(to) && index.get(from)! < index.get(to)!);
 }
+
 export function validateProof(input: unknown): Proof {
-  const p = proofSchema.parse(input); unique(p.nodes, '快照节点'); unique(p.edges, '快照连接');
-  if (!validPath(p, p.target, p.nodeIds, p.edgeIds) || p.nodes.length !== p.nodeIds.length || p.edges.length !== p.edgeIds.length) throw new Error('推导文件路径无效');
+  const p = proofSchema.parse(input);
+  unique(p.nodes, '快照节点'); unique(p.edges, '快照连接');
+  if (p.nodes.length !== p.nodeIds.length || p.edges.length !== p.edgeIds.length) throw new Error('推导文件数据不完整');
+  if (new Set(p.nodeIds).size !== p.nodeIds.length || new Set(p.edgeIds).size !== p.edgeIds.length) throw new Error('推导文件存在重复引用');
+  const ids = new Set(p.nodeIds), edgeIds = new Set(p.edgeIds);
+  if (!ids.has(p.target)) throw new Error('推导目标不在快照中');
+  if (p.nodes.some(u => !ids.has(u.id)) || p.edges.some(e => !edgeIds.has(e.id))) throw new Error('推导文件引用不一致');
+  if (p.edges.some(e => !ids.has(e.source) || !ids.has(e.target))) throw new Error('推导文件连接端点无效');
+  const order = p.order?.length ? p.order : [...p.nodeIds];
+  if (order.length !== p.nodeIds.length || new Set(order).size !== p.nodeIds.length || order.some(id => !ids.has(id))) throw new Error('推导顺序无效');
+  const index = new Map(order.map((id, i) => [id, i]));
+  for (const e of p.edges) if (e.direction === 'single' && index.get(e.source)! >= index.get(e.target)!) throw new Error('推导顺序与连接方向冲突');
+  p.order = order;
   return p;
 }
-export function snapshot(n: Notebook, target: string, ids: string[], id = uid()): Proof {
-  if (!validPath(n, target, ids)) throw new Error('请选择从基本事实到目标的完整路径');
-  const edgeIds = ids.slice(1).map((x, i) => neighbors(n, ids[i]).find(v => v.id === x)!.edge);
-  return { kind: 'supernote-proof', version: 1, id, title: n.nodes.find(u => u.id === target)!.content.replace(/[#*$]/g, '').slice(0, 32), notebookId: n.id, target, nodeIds: [...ids], edgeIds, nodes: structuredClone(ids.map(x => n.nodes.find(u => u.id === x)!)), edges: structuredClone(edgeIds.map(x => n.edges.find(e => e.id === x)!)) };
+export function snapshot(n: Notebook, target: string, nodeIds: string[], edgeIds: string[], order: string[]): Proof {
+  const goal = n.nodes.find(u => u.id === target);
+  if (!goal) throw new Error('推导目标不存在');
+  if (order.length !== nodeIds.length || new Set(order).size !== order.length || order.some(id => !nodeIds.includes(id))) throw new Error('推导顺序与单位数量不一致');
+  const nodes = order.map(id => n.nodes.find(u => u.id === id));
+  const edges = edgeIds.map(id => n.edges.find(e => e.id === id));
+  if (nodes.some(unit => !unit) || edges.some(edge => !edge)) throw new Error('推导引用了不存在的单位或连接');
+  const proof: Proof = { kind: 'supernote-proof', version: 1, id: uid(), title: goal.content.replace(/[#*$]/g, '').slice(0, 32) || '推导', notebookId: n.id, target, nodeIds: [...order], edgeIds: [...edgeIds], order: [...order], nodes: structuredClone(nodes as Unit[]), edges: structuredClone(edges as Link[]) };
+  return validateProof(proof);
 }
+
 export function mergeGroups(n: Notebook, editing?: string): string[][] {
   const next = new Map<string, string>();
   for (const u of n.nodes) {

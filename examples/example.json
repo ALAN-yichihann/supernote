@@ -1,0 +1,34 @@
+{
+  "kind": "supernote",
+  "version": 1,
+  "id": "example-notebook",
+  "title": "多前置推导示例",
+  "domains": [
+    { "id": "d-example", "name": "示例推导", "position": { "x": 0, "y": 0 } }
+  ],
+  "nodes": [
+    { "id": "f1", "domainId": "d-example", "content": "基本事实 1：$a+b=b+a$", "tags": ["fact", "inside"], "annotation": "", "position": { "x": 20, "y": 30 } },
+    { "id": "u2", "domainId": "d-example", "content": "基本单位 2：交换后仍成立", "tags": ["inside"], "annotation": "", "position": { "x": 280, "y": 30 } },
+    { "id": "u3", "domainId": "d-example", "content": "基本单位 3：整理同类项", "tags": ["inside"], "annotation": "", "position": { "x": 280, "y": 170 } },
+    { "id": "u4", "domainId": "d-example", "content": "基本单位 4：化简为最简式", "tags": ["inside"], "annotation": "", "position": { "x": 540, "y": 170 } },
+    { "id": "u5", "domainId": "d-example", "content": "基本单位 5：两条路径汇合", "tags": ["inside"], "annotation": "", "position": { "x": 800, "y": 100 } },
+    { "id": "f6", "domainId": "d-example", "content": "基本事实 6：已知 $x=1$", "tags": ["fact", "inside"], "annotation": "", "position": { "x": 800, "y": 360 } },
+    { "id": "c7", "domainId": "d-example", "content": "结论 7：命题得证", "tags": ["conclusion", "inside"], "annotation": "", "position": { "x": 1080, "y": 210 } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "f1", "target": "u2", "direction": "single" },
+    { "id": "e2", "source": "f1", "target": "u3", "direction": "single" },
+    { "id": "e3", "source": "u3", "target": "u4", "direction": "single" },
+    { "id": "e4", "source": "u2", "target": "u5", "direction": "single" },
+    { "id": "e5", "source": "u4", "target": "u5", "direction": "single" },
+    { "id": "e6", "source": "u5", "target": "c7", "direction": "single" },
+    { "id": "e7", "source": "f6", "target": "c7", "direction": "single" }
+  ],
+  "tags": [
+    { "id": "fact", "name": "基本事实", "color": "#c89932" },
+    { "id": "conclusion", "name": "结论", "color": "#3577db" },
+    { "id": "inside", "name": "课内", "color": "#68a8a2" },
+    { "id": "outside", "name": "课外", "color": "#b18bce" }
+  ],
+  "proofs": []
+}

@@ -17,7 +17,7 @@ class API:
         result=self.window.create_file_dialog(webview.OPEN_DIALOG,file_types=('Supernote JSON (*.json)','所有文件 (*.*)'))
         if not result:return {'ok':True,'value':None}
         try:return {'ok':True,'value':self.storage.read(result[0])}
-        except Exception as exc:return {'ok':False,'error':f'打开失败：{exc}'}
+        except Exception as exc:return {'ok':False,'error':f'打开失败：{exc}'}  # noqa: BLE001 统一转为界面错误
     def save_file(self,data:dict[str,Any],save_as:bool=False)->dict[str,Any]:
         try:
             if save_as or self.storage.path is None:
@@ -25,7 +25,7 @@ class API:
                 if not result:return {'ok':True,'value':False}
                 self.storage.path=Path(result)
             self.storage.write(data); self.dirty_value=False; return {'ok':True,'value':True}
-        except Exception as exc:return {'ok':False,'error':f'保存失败：{exc}'}
+        except Exception as exc:return {'ok':False,'error':f'保存失败：{exc}'}  # noqa: BLE001 统一转为界面错误
     def reset_file(self)->dict[str,Any]: self.storage.path=None; self.dirty_value=False; return {'ok':True,'value':None}
     def dirty(self,value:bool)->None:self.dirty_value=value
     def close_window(self)->None:self.window.destroy()
