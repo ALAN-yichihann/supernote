@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaults, proofRegion, resolveProof, snapshot, topoOrder, validOrder, validateProof, type Notebook, type Tag } from './core';
+import { choiceFacts, defaults, proofRegion, resolveProof, routeToTarget, snapshot, topoOrder, validOrder, validateProof, type Notebook, type Tag } from './core';
 
 const unit = (id: string, tags: string[], content = id) => ({ id, domainId: 'd1', content, tags, annotation: '', position: { x: 0, y: 0 } });
 const link = (id: string, source: string, target: string, direction: 'single' | 'both' = 'single') => ({ id, source, target, direction });
@@ -54,6 +54,21 @@ describe('推导顺序', () => {
     expect(position('U2')).toBeLessThan(position('U5'));
     expect(position('U4')).toBeLessThan(position('U5'));
     expect(position('U5')).toBeLessThan(position('C7'));
+  });
+});
+
+describe('推导方式与路径切换', () => {
+  it('按该方式需要的基本事实命名', () => {
+    const source = sample();
+    expect(choiceFacts(source, 'C7', 'e-c7a')).toEqual(['F1']);
+    expect(choiceFacts(source, 'C7', 'e-c7b')).toEqual(['F6']);
+  });
+
+  it('从任意单位出发都能找到通往目标的连接序列', () => {
+    const source = sample();
+    expect(routeToTarget(source, 'C7', 'U2').map(step => step.next)).toEqual(['U5', 'C7']);
+    expect(routeToTarget(source, 'C7', 'U4').map(step => step.next)).toEqual(['U5', 'C7']);
+    expect(routeToTarget(source, 'C7', 'F1').map(step => step.next)).toEqual(['U2', 'U5', 'C7']);
   });
 });
 

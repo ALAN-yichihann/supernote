@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Background, Handle, MarkerType, Position, ReactFlow, type Edge as FlowEdge, type Node as FlowNode, type NodeProps } from '@xyflow/react';
 import { ArrowLeft, Download, Edit3, Eye, GripVertical, Sparkles } from 'lucide-react';
-import { incomingLinks, isConclusion, linkPredecessor, proofRegion, regionLinks, resolveProof, snapshot, validOrder, type Notebook, type Proof } from '../core';
+import { choiceFacts, incomingLinks, isConclusion, linkPredecessor, proofRegion, regionLinks, resolveProof, routeToTarget, snapshot, validOrder, type Notebook, type Proof } from '../core';
 import { useStore, safely } from '../store';
 import { saveFile } from '../bridge';
 import { IconButton, Markdown } from './Common';
@@ -55,8 +55,8 @@ function buildGraph(note: Notebook, region: Set<string>, resolution: ReturnType<
   const edges: FlowEdge[] = links.map(link => {
     const from = level.get(link.source) ?? 0, to = level.get(link.target) ?? 0;
     const [pred, succ] = from <= to ? [link.source, link.target] : [link.target, link.source];
-    const selected = resolution.edges.includes(link.id), optional = isConclusion(note, succ);
-    return { id: link.id, source: pred, target: succ, type: 'default', interactionWidth: 26, markerEnd: { type: MarkerType.ArrowClosed, color: selected ? '#4a86d8' : '#b9c9da' }, style: { stroke: selected ? '#4a86d8' : '#c3d1e0', strokeWidth: selected ? 2.2 : 1.4, strokeDasharray: optional ? '6 4' : undefined }, data: { optional, target: succ }, className: `proof-edge${optional ? ' optional' : ''}${selected ? ' active' : ''}` };
+    const selected = resolution.edges.includes(link.id);
+    return { id: link.id, source: pred, target: succ, type: 'default', interactionWidth: 26, markerEnd: { type: MarkerType.ArrowClosed, color: selected ? '#4a86d8' : '#b9c9da' }, style: { stroke: selected ? '#4a86d8' : '#c3d1e0', strokeWidth: selected ? 2.2 : 1.4 }, data: { target: succ }, className: `proof-edge${selected ? ' active' : ''}` };
   });
   return { nodes, edges };
 }
@@ -99,6 +99,28 @@ export default function ProofView({ target, close }: { target: string; close: ()
     setChoices(current => ({ ...current, [target]: edge }));
     setText('');
   }
+  // 点击子图中的单位或连接：把它接入推导路径，沿途结论单位的入连接随之切换。
+  function switchNode(node: string) {
+    if (resolution.nodes.includes(node)) return;
+    setChoices(current => {
+      const next = { ...current };
+      for (const step of routeToTarget(note, target, node)) if (isConclusion(note, step.next)) next[step.next] = step.edge.id;
+      return next;
+    });
+    setText('');
+  }
+  function switchEdge(edge: FlowEdge) {
+    if (resolution.edges.includes(edge.id)) return;
+    const succ = (edge.data as { target?: string } | undefined)?.target;
+    if (!succ) return;
+    setChoices(current => {
+      const next = { ...current };
+      if (isConclusion(note, succ)) next[succ] = edge.id;
+      for (const step of routeToTarget(note, target, succ)) if (isConclusion(note, step.next)) next[step.next] = step.edge.id;
+      return next;
+    });
+    setText('');
+  }
 
   return <div className="proof-panel" style={{ width }}>
     <div className="proof-resize" onPointerDown={e => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) setWidth(Math.max(640, Math.min(window.innerWidth - 130, width + e.movementX))); }}/>
@@ -114,20 +136,24 @@ export default function ProofView({ target, close }: { target: string; close: ()
     </header>
     <div className="proof-body">
       <div className="proof-path">
-        <div className="proof-section-title"><span className="eyebrow">推导思维导图</span><span className="proof-hint">点击虚线连接切换推导方式</span></div>
+        <div className="proof-section-title"><span className="eyebrow">推导思维导图</span><span className="proof-hint">点击连接或单位切换推导路径</span></div>
         <div className="proof-graph">
-          <ReactFlow nodes={graph.nodes} edges={graph.edges} nodeTypes={nodeTypes} fitView minZoom={0.2} maxZoom={1.6} nodesDraggable={false} nodesConnectable={false} onEdgeClick={(_, edge) => { const data = edge.data as { optional?: boolean; target?: string } | undefined; if (data?.optional && data.target) choose(data.target, edge.id); }} proOptions={{ hideAttribution: true }}>
+          <ReactFlow nodes={graph.nodes} edges={graph.edges} nodeTypes={nodeTypes} fitView minZoom={0.2} maxZoom={1.6} nodesDraggable={false} nodesConnectable={false} onNodeClick={(_, node) => switchNode(node.id)} onEdgeClick={(_, edge) => switchEdge(edge)} proOptions={{ hideAttribution: true }}>
             <Background gap={18} size={1} color="#e3ecf6"/>
           </ReactFlow>
         </div>
-        <div className="proof-legend"><span><i className="legend-line solid"/>必要条件</span><span><i className="legend-line dashed"/>可选的推导方式</span></div>
+        <div className="proof-legend"><span><i className="legend-line solid"/>当前推导路径</span><span className="proof-hint">点击其他连接或单位切换</span></div>
         {optionalTargets.length > 0 && <div className="proof-options">
           <span className="eyebrow">推导方式</span>
           {optionalTargets.map(id => {
             const links = incomingLinks(note, id), chosen = choices[id] ?? links[0]?.id;
             return <div className="option-row" key={id}>
               <span className="option-label">{name(note.nodes.find(unit => unit.id === id)?.content || '')}</span>
-              {links.map(link => <button key={link.id} className={chosen === link.id ? 'active' : ''} title={plain(note.nodes.find(unit => unit.id === linkPredecessor(link, id))?.content || '', 40)} onClick={() => choose(id, link.id)}>{name(note.nodes.find(unit => unit.id === linkPredecessor(link, id))?.content || '')}</button>)}
+              {links.map(link => {
+                const facts = choiceFacts(note, id, link.id).map(factId => name(note.nodes.find(unit => unit.id === factId)?.content || '')).join('·');
+                const label = facts || name(note.nodes.find(unit => unit.id === linkPredecessor(link, id))?.content || '');
+                return <button key={link.id} className={chosen === link.id ? 'active' : ''} title={label} onClick={() => choose(id, link.id)}>{label.length > 22 ? `${label.slice(0, 22)}…` : label}</button>;
+              })}
             </div>;
           })}
         </div>}

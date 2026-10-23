@@ -137,6 +137,37 @@ export function validOrder(order: string[], deps: [string, string][]) {
   return deps.every(([from, to]) => index.has(from) && index.has(to) && index.get(from)! < index.get(to)!);
 }
 
+// 从任意单位出发，沿推导方向走到目标，用于“点击子图切换推导路径”。
+export interface RouteStep { edge: Link; next: string }
+export function routeToTarget(n: Notebook, target: string, from: string): RouteStep[] {
+  const queue = [from], seen = new Set([from]), parent = new Map<string, RouteStep>();
+  while (queue.length) {
+    const current = queue.shift()!;
+    if (current === target) break;
+    for (const edge of n.edges) {
+      const next = edge.source === current ? edge.target : edge.direction === 'both' && edge.target === current ? edge.source : '';
+      if (!next || seen.has(next)) continue;
+      seen.add(next);
+      parent.set(next, { edge, next: current });
+      queue.push(next);
+    }
+  }
+  if (!seen.has(target)) return [];
+  const steps: RouteStep[] = [];
+  let current = target;
+  while (current !== from) {
+    const step = parent.get(current);
+    if (!step) return [];
+    steps.push({ edge: step.edge, next: current });
+    current = step.next;
+  }
+  return steps.reverse();
+}
+// 某条推导方式（结论的一条入连接）需要用到的基本事实。
+export function choiceFacts(n: Notebook, node: string, edgeId: string): string[] {
+  return resolveProof(n, node, { [node]: edgeId }).nodes.filter(id => isFact(n, id));
+}
+
 export function validateProof(input: unknown): Proof {
   const p = proofSchema.parse(input);
   unique(p.nodes, '快照节点'); unique(p.edges, '快照连接');
