@@ -20,3 +20,6 @@
 .editor-panel{position:absolute;inset:18px auto 18px 18px;background:#fff;border:1px solid #d6e2ef;border-radius:15px;z-index:14;box-shadow:0 15px 45px #29496e2d;display:flex;flex-direction:column;overflow:hidden}.editor-panel .panel-header{min-height:70px}.editor-panel-body{padding:24px;overflow:auto}.editor-panel .editor-columns{grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);min-height:380px}.editor-panel .editor-columns>label{display:flex;flex-direction:column}.editor-panel .editor-columns textarea{flex:1;min-height:360px;resize:vertical}.editor-panel .preview{min-height:360px;overflow:auto}.editor-panel footer{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding-top:15px;border-top:1px solid #e8eef5}
 
 .editor-resize{position:absolute;right:-4px;top:0;bottom:0;width:9px;cursor:col-resize;z-index:3}.annotation-field{display:grid!important;gap:7px!important}.annotation-field>span{color:#65809f;font-size:12px}
+/* 问题8：编辑面板与推导面板同层级同尺寸，批注输入框整行显示 */
+.editor-panel{z-index:12;max-width:calc(100% - 36px)}
+.annotation-field textarea{width:100%;box-sizing:border-box}
