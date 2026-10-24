@@ -10,3 +10,32 @@ playwright-report/
 .pytest_cache/
 .ruff_cache/
 artifacts/
+
+# 环境变量与密钥：不得提交到仓库
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# 日志与临时文件
+*.log
+*.tmp
+.pytest-tmp/
+coverage/
+.vite/
+.dsh/
+
+# 编辑器与系统文件
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 本地笔记：可能包含个人学习内容
+notes/
+*.note.json
