@@ -53,3 +53,5 @@
 .module-index{display:grid;place-items:center;flex:0 0 auto;width:18px;height:18px;border-radius:50%;background:#e8f2ff;color:#3b7ac4;font-size:10px}
 .module-text{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .proof-path .generate{position:sticky;bottom:-1px;margin-top:10px;box-shadow:0 -8px 14px #fff}
+/* 问题11：右键菜单分组分隔线 */
+.menu-divider{height:1px;margin:5px 8px;background:#e7eef6}
