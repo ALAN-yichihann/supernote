@@ -239,3 +239,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 ## 约定
 
 所有说明与代码注释使用简体中文；修改图数据必须经过核心命令与校验，AI 事务提交前检查原笔记版本。
+
+## License
+
+本项目采用 MIT 许可证，详见 [LICENCE](LICENCE)。
+
+Copyright (c) 2026 ALAN-yichihann
