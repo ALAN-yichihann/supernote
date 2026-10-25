@@ -79,16 +79,17 @@ class API:
                 self._storage.set_secret(f'{ident}_key', str(entry['key']))
         return {'ok': True, 'value': None}
 
-    def start_ai(self, ident: str, prompt: str, nodes: list[str], images: list[str], note: dict[str, Any], history: list[dict[str, str]], kind: str = 'qa') -> dict[str, Any]:
+    def start_ai(self, ident: str, prompt: str, nodes: list[str], images: list[str], note: dict[str, Any], history: list[dict[str, str]], kind: str = 'qa', level: str = 'normal') -> dict[str, Any]:
         del nodes, images, history
         kind = kind if kind in ('qa', 'graph') else 'qa'
+        level = level if level in ('brief', 'normal', 'detailed') else 'normal'
         label = '思维导图' if kind == 'graph' else '问答'
         endpoint = self._storage.get_secret(f'{kind}_endpoint') or ''
         model = self._storage.get_secret(f'{kind}_model') or ''
         key = self._storage.get_secret(f'{kind}_key') or ''
         if not endpoint or not model or not key:
             return {'ok': False, 'error': f'请先配置{label} AI 的端点、模型和 KEY'}
-        self._ai.start(ident, endpoint, key, model, prompt, note, kind)
+        self._ai.start(ident, endpoint, key, model, prompt, note, kind, level)
         return {'ok': True, 'value': None}
 
     def poll_ai(self, ident: str) -> dict[str, Any]:

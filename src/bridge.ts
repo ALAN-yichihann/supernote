@@ -11,7 +11,7 @@ interface API {
   close_window(): Promise<void>;
   get_settings(): Promise<Result<Settings>>;
   save_settings(value: Settings): Promise<Result<null>>;
-  start_ai(id: string, prompt: string, nodes: string[], images: string[], note: Notebook, history: {role: string; content: string}[], kind?: 'qa' | 'graph'): Promise<Result<null>>;
+  start_ai(id: string, prompt: string, nodes: string[], images: string[], note: Notebook, history: {role: string; content: string}[], kind?: 'qa' | 'graph', level?: 'brief' | 'normal' | 'detailed'): Promise<Result<null>>;
   poll_ai(id: string): Promise<Result<AIEvent[]>>;
   cancel_ai(id: string): Promise<Result<null>>;
 }

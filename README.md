@@ -111,6 +111,8 @@ python -m desktop.main
 
 AI 面板收起后对话内容保留，再次显示即可继续；消息区独立滚动，输入框固定在面板底部。回答以 Markdown 渲染并流式逐段显示，气泡上方依次提示「正在思考」「正在输出」；需要改图时切换为「正在修改思维导图」。正文可直接选中，也可点右上角的复制按钮复制原始 Markdown。
 
+输入框下方的「模式」按钮提供三档回答深度：简略只给结论与关键步骤，中等给出完整推导链，详细逐步讲解算式变形与依据。任何模式都不会只列公式，公式前后必须有文字说明；模式只作用于问答 AI，图谱 AI 不受影响。
+
 ### 快捷键与交互
 
 | 操作 | 效果 |
@@ -216,6 +218,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 - `prompts/graph.md`（思维导图 AI）：不与用户交互，只把 `graph` 指令转成域 / 单位 / 连接 / 标签事务，以 `json` 代码块返回。
 - 前端从回答中剥离 `graph` 指令，自动调用图谱 AI；事务由 `src/ai-ops.ts` 补全与去重，`desktop/ai.py` 负责从回答中提取 `json` 事务块。
 - 若宿主声明提供 `search_units`、`get_neighbors`、`create_domain`、`create_unit`、`update_unit`、`create_link`、`delete_unit` 等工具，则优先调用工具并等待结果；当前宿主仍以事务块方式写入。
+- 回答模式（简略 / 中等 / 详细）由宿主追加到问答提示词末尾，图谱提示词不受影响；三档都要求公式配文字说明。
 - 保存文件后重新发起请求即可生效，无需重启应用；也可用 `SUPERNOTE_PROMPT_DIR` 指向自定义提示词目录。
 
 ## 当前限制

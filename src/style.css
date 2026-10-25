@@ -5,6 +5,10 @@
 .message-status{display:flex;align-items:center;gap:4px;color:#6f8fae;font-size:10px}
 .message-status::before{content:"";width:6px;height:6px;border-radius:50%;background:#5e98dc;animation:pulse 1.1s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.ai-mode-row{display:flex;align-items:center;gap:5px;margin-top:8px}
+.ai-mode-label{color:#8aa1b8;font-size:10px}
+.ai-mode-row button{padding:3px 8px;border-radius:6px;background:#f3f6fa;color:#7189a3;font-size:10px}
+.ai-mode-row button.active{background:#e8f2ff;color:#3979c7}
 .copy-button{display:grid;place-items:center;padding:2px;border-radius:4px;background:transparent;color:#9ab0c6}
 .copy-button:hover{background:#e8f2ff;color:#3979c7}
 .ai-messages{user-select:text}.message.user>div{background:#eaf3ff;border-radius:10px 10px 3px 10px;padding:9px 11px;margin-left:18px}.message.assistant>div{background:#f5f7fa;border-radius:3px 10px 10px 10px;padding:9px 11px}
