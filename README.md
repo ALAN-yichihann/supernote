@@ -4,7 +4,7 @@
 
 Supernote 是一个本地优先的桌面笔记应用：把知识拆成**基本事实、推导步骤、结论**三类基本单位，用**域**组织、用**单向或双向连接**表达推导关系，再沿着连接自动生成可读的推导过程。界面基于 React + TypeScript，桌面壳基于 Python pywebview，笔记与密钥都保存在本机。
 
-![主界面](artifacts/problem3-main.png)
+![主界面](docs/main-interface.png)
 
 ## 功能
 
@@ -18,7 +18,7 @@ Supernote 是一个本地优先的桌面笔记应用：把知识拆成**基本�
 - **提示词外置**：`prompts/qa.md` 与 `prompts/graph.md` 就是系统提示词，用户可直接编辑，下一次请求即生效。
 - **本地文件**：笔记以 JSON 保存，推导过程可导出为 Markdown；桌面宿主采用临时文件 + 原子替换写入，顶栏用脏标记提示未保存修改，支持撤回/恢复。
 
-![推导过程](artifacts/problem9-proof-default.png)
+![推导过程](docs/proof-panel.png)
 
 ## 环境要求
 
@@ -189,7 +189,8 @@ prompts/             可由用户编辑的问答 AI / 思维导图 AI 提示词
 examples/            可导入的示例笔记（含多前置推导示例）
 tests/               Python 单元测试（存储、提示词加载、AI 事务解析）
 scripts/package.ps1  PyInstaller 打包脚本
-artifacts/           界面验证截图
+docs/                文档与 README 截图
+artifacts/           本地验证截图（未跟踪）
 ```
 
 ## 开发与检查
