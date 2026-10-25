@@ -3,7 +3,7 @@ import { Background, Handle, MarkerType, Position, ReactFlow, type Edge as FlowE
 import { ArrowLeft, Download, Edit3, Eye, GripVertical, Sparkles } from 'lucide-react';
 import { choiceFacts, incomingLinks, isConclusion, linkPredecessor, proofRegion, regionLinks, resolveProof, routeToTarget, snapshot, validOrder, type Notebook, type Proof } from '../core';
 import { useStore, safely } from '../store';
-import { saveFile } from '../bridge';
+import { saveText } from '../bridge';
 import { IconButton, Markdown } from './Common';
 
 interface ProofNodeData extends Record<string, unknown> { label: string; fact: boolean; conclusion: boolean; active: boolean }
@@ -81,6 +81,7 @@ export default function ProofView({ target, close }: { target: string; close: ()
   const optionalTargets = useMemo(() => [...region].filter(id => isConclusion(note, id) && incomingLinks(note, id).length > 1), [note, region]);
 
   const goalLabel = goal?.title.trim() || plain(goal?.content || '', 24) || '目标';
+  const markdownName = `推导-${goalLabel.replace(/[\\/:*?"<>|]/g, '_')}.md`;
   const imageContent = order.map(id => note.nodes.find(unit => unit.id === id)).filter((unit): unit is NonNullable<typeof unit> => !!unit?.image).map((unit, index) => `![推导图片 ${index + 1}](${unit.image})`).join('\n\n');
   const stageTitle = (id: string) => {
     const unit = note.nodes.find(item => item.id === id);
@@ -146,7 +147,7 @@ export default function ProofView({ target, close }: { target: string; close: ()
       </div>
       <div className="panel-actions">
         <IconButton title={editing ? '阅读模式' : '编辑模式'} active={editing} onClick={() => setEditing(!editing)}>{editing ? <Eye size={17}/> : <Edit3 size={17}/>}</IconButton>
-        <IconButton title="保存推导过程" disabled={!proof} onClick={() => proof && saveFile(proof, true)}><Download size={17}/></IconButton>
+        <IconButton title="导出 Markdown" disabled={!order.length} onClick={() => saveText(content, markdownName)}><Download size={17}/></IconButton>
       </div>
     </header>
     <div className="proof-body">

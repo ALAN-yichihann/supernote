@@ -41,3 +41,13 @@ def test_open_file_accepts_path_tuple(tmp_path):
     api._window = FakeWindow((str(target),))
     assert api.open_file() == {'ok': True, 'value': {'version': 1}}
     assert api._window.calls == [webview.FileDialog.OPEN]
+
+
+def test_save_text_writes_markdown(tmp_path):
+    target = tmp_path / '推导.md'
+    api = API()
+    api._window = FakeWindow((str(target),))
+    assert api.save_text('# 推导：测试\n\n内容', '推导.md') == {'ok': True, 'value': True}
+    assert target.read_text(encoding='utf-8') == '# 推导：测试\n\n内容'
+    assert api._window.calls == [webview.FileDialog.SAVE]
+

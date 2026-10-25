@@ -6,6 +6,7 @@ export interface AIEvent { type: 'text' | 'status' | 'done' | 'error' | 'operati
 interface API {
   open_file(): Promise<Result<unknown | null>>;
   save_file(data: Notebook | Proof, saveAs: boolean): Promise<Result<boolean>>;
+  save_text(text: string, filename?: string): Promise<Result<boolean>>;
   reset_file(): Promise<Result<null>>;
   dirty(value: boolean): Promise<void>;
   close_window(): Promise<void>;
@@ -26,4 +27,8 @@ export async function openFile(): Promise<unknown | null> {
 export async function saveFile(data: Notebook | Proof, saveAs = false): Promise<boolean> {
   if (isDesktop()) return unwrap(api().save_file(data, saveAs));
   const a = document.createElement('a'), url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); a.href = url; a.download = `${data.title || '推导'}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); return true;
+}
+export async function saveText(text: string, filename = '推导.md'): Promise<boolean> {
+  if (isDesktop()) return unwrap(api().save_text(text, filename));
+  const a = document.createElement('a'), url = URL.createObjectURL(new Blob([text], { type: 'text/markdown' })); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); return true;
 }

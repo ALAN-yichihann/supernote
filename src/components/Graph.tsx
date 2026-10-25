@@ -21,18 +21,21 @@ function Canvas({ editing, onEdit, onProof, onAddToAI, filter, filterMode }: Pro
   const [connecting, setConnecting] = useState<{ id: string; mode: string }>();
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const openMenu = useCallback((e: any, kind: string, id?: string) => { e.preventDefault(); if (locked) return; setMenu({ x: Math.min(e.clientX, window.innerWidth - 240), y: Math.min(e.clientY, window.innerHeight - 470), kind, id, pos: flow.screenToFlowPosition({ x: e.clientX, y: e.clientY }) }); }, [flow, locked]);
-  function connect(target: string) { if (!connecting) return; const edgeTarget = connecting.mode === 'in' ? connecting.id : target; safely(() => { if (note.nodes.find(u => u.id === edgeTarget)?.tags.includes('fact')) throw new Error('基本事实只允许出连接，不能作为推导目标'); const id = uid(); operate([{ action: 'put', entity: 'edges', id, value: { id, source: connecting.mode === 'in' ? target : connecting.id, target: connecting.mode === 'in' ? connecting.id : target, direction: connecting.mode === 'both' ? 'both' : 'single' } }]); setConnecting(undefined); }); }
+  const connect = useCallback((target: string) => { if (!connecting) return; const edgeTarget = connecting.mode === 'in' ? connecting.id : target; safely(() => { if (note.nodes.find(u => u.id === edgeTarget)?.tags.includes('fact')) throw new Error('基本事实只允许出连接，不能作为推导目标'); const id = uid(); operate([{ action: 'put', entity: 'edges', id, value: { id, source: connecting.mode === 'in' ? target : connecting.id, target: connecting.mode === 'in' ? connecting.id : target, direction: connecting.mode === 'both' ? 'both' : 'single' } }]); setConnecting(undefined); }); }, [connecting, note, operate]);
   const groups = useMemo(() => mergeGroups(note, editing), [note, editing]);
-  const mapping = new Map<string, string>(); groups.forEach(g => g.forEach(id => mapping.set(id, `group-${g[0]}`)));
-  const graphNodes: Node[] = note.domains.map(d => {
-    const units = note.nodes.filter(u => u.domainId === d.id);
-    return { id: d.id, type: 'group', position: d.position, data: { label: d.name }, style: { width: Math.max(520, ...units.map(u => u.position.x + 370)), height: Math.max(360, ...units.map(u => u.position.y + Math.max(250, u.content.length * .8))) }, className: 'domain-node' };
-  });
-  for (const g of groups) {
-    const units = g.map(id => note.nodes.find(u => u.id === id)!); const matched = !filter || units.some(u => u.tags.includes(filter));
-    graphNodes.push({ id: `group-${g[0]}`, type: 'unit', parentId: units[0].domainId, position: units[0].position, hidden: !matched && filterMode === 'filter', data: { units, note, onMenu: (e: React.MouseEvent, id: string) => openMenu(e, 'unit', id), onPick: connect, highlighted: filter ? units.filter(u => u.tags.includes(filter)).map(u => u.id) : [], filtered: !matched } });
-  }
-  const graphEdges: Edge[] = note.edges.filter(e => mapping.get(e.source) !== mapping.get(e.target)).map(e => ({ id: e.id, source: mapping.get(e.source)!, target: mapping.get(e.target)!, sourceHandle: `out-${e.source}`, targetHandle: `in-${e.target}`, markerEnd: { type: MarkerType.ArrowClosed, color: '#6488ba' }, markerStart: e.direction === 'both' ? { type: MarkerType.ArrowClosed, color: '#b58bcf' } : undefined, style: { stroke: e.direction === 'both' ? 'url(#dual-line)' : '#8ba4c6', strokeWidth: 2 }, className: e.direction === 'both' ? 'both-edge' : '', interactionWidth: 20 }));
+  const mapping = useMemo(() => { const map = new Map<string, string>(); groups.forEach(g => g.forEach(id => map.set(id, `group-${g[0]}`))); return map; }, [groups]);
+  const graphNodes = useMemo(() => {
+    const result: Node[] = note.domains.map(d => {
+      const units = note.nodes.filter(u => u.domainId === d.id);
+      return { id: d.id, type: 'group', position: d.position, data: { label: d.name }, style: { width: Math.max(520, ...units.map(u => u.position.x + 370)), height: Math.max(360, ...units.map(u => u.position.y + Math.max(250, u.content.length * .8))) }, className: 'domain-node' };
+    });
+    for (const g of groups) {
+      const units = g.map(id => note.nodes.find(u => u.id === id)!); const matched = !filter || units.some(u => u.tags.includes(filter));
+      result.push({ id: `group-${g[0]}`, type: 'unit', parentId: units[0].domainId, position: units[0].position, hidden: !matched && filterMode === 'filter', data: { units, note, onMenu: (e: React.MouseEvent, id: string) => openMenu(e, 'unit', id), onPick: connect, highlighted: filter ? units.filter(u => u.tags.includes(filter)).map(u => u.id) : [], filtered: !matched } });
+    }
+    return result;
+  }, [note, groups, filter, filterMode, openMenu, connect]);
+  const graphEdges = useMemo<Edge[]>(() => note.edges.filter(e => mapping.get(e.source) !== mapping.get(e.target)).map(e => ({ id: e.id, source: mapping.get(e.source)!, target: mapping.get(e.target)!, sourceHandle: `out-${e.source}`, targetHandle: `in-${e.target}`, markerEnd: { type: MarkerType.ArrowClosed, color: '#6488ba' }, markerStart: e.direction === 'both' ? { type: MarkerType.ArrowClosed, color: '#b58bcf' } : undefined, style: { stroke: e.direction === 'both' ? 'url(#dual-line)' : '#8ba4c6', strokeWidth: 2 }, className: e.direction === 'both' ? 'both-edge' : '', interactionWidth: 20 })), [note.edges, mapping]);
   const [local, setLocal] = useState<Node[] | null>(null);
   const nodes = local || graphNodes;
   function addUnit(domainId: string, source?: string, mode?: string) {

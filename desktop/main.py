@@ -56,6 +56,16 @@ class API:
         except Exception as exc:  # noqa: BLE001 统一转为界面错误
             return {'ok': False, 'error': f'保存失败：{exc}'}
 
+    def save_text(self, text: str, filename: str = '推导.md') -> dict[str, Any]:
+        try:
+            path = self._selected_path(self._window.create_file_dialog(webview.FileDialog.SAVE, save_filename=filename, file_types=('Markdown (*.md)',)))
+            if path is None:
+                return {'ok': True, 'value': False}
+            path.write_text(text, encoding='utf-8', newline='\n')
+            return {'ok': True, 'value': True}
+        except Exception as exc:  # noqa: BLE001 统一转为界面错误
+            return {'ok': False, 'error': f'导出失败：{exc}'}
+
     def reset_file(self) -> dict[str, Any]:
         self._storage.path = None
         self.dirty_value = False

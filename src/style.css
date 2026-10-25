@@ -9,6 +9,12 @@
 .ai-mode-label{color:#8aa1b8;font-size:10px}
 .ai-mode-row button{padding:3px 8px;border-radius:6px;background:#f3f6fa;color:#7189a3;font-size:10px}
 .ai-mode-row button.active{background:#e8f2ff;color:#3979c7}
+/* 已保存推导列表 */
+.proof-list{display:grid;gap:8px}
+.proof-list button{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border:1px solid #dce7f2;border-radius:8px;background:#fbfdff;color:#45617f;text-align:left}
+.proof-list button:hover:not(:disabled){border-color:#8bb9f0;background:#edf5ff}
+.proof-list button:disabled{opacity:.5;cursor:not-allowed}
+.proof-list small{color:#8aa1b8;font-size:11px}
 .copy-button{display:grid;place-items:center;padding:2px;border-radius:4px;background:transparent;color:#9ab0c6}
 .copy-button:hover{background:#e8f2ff;color:#3979c7}
 .ai-messages{user-select:text}.message.user>div{background:#eaf3ff;border-radius:10px 10px 3px 10px;padding:9px 11px;margin-left:18px}.message.assistant>div{background:#f5f7fa;border-radius:3px 10px 10px 10px;padding:9px 11px}
