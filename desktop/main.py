@@ -26,22 +26,30 @@ class API:
         self.dev = dev
         self.dirty_value = False
 
-    def open_file(self) -> dict[str, Any]:
-        result = self._window.create_file_dialog(webview.OPEN_DIALOG, file_types=('Supernote JSON (*.json)', '所有文件 (*.*)'))
+    @staticmethod
+    def _selected_path(result: Any) -> Path | None:
+        """pywebview 6 的文件对话框返回路径元组，这里同时兼容字符串。"""
         if not result:
+            return None
+        value = result[0] if isinstance(result, (list, tuple)) else result
+        return Path(value) if value else None
+
+    def open_file(self) -> dict[str, Any]:
+        path = self._selected_path(self._window.create_file_dialog(webview.FileDialog.OPEN, file_types=('Supernote JSON (*.json)', '所有文件 (*.*)')))
+        if path is None:
             return {'ok': True, 'value': None}
         try:
-            return {'ok': True, 'value': self._storage.read(result[0])}
+            return {'ok': True, 'value': self._storage.read(str(path))}
         except Exception as exc:  # noqa: BLE001 统一转为界面错误
             return {'ok': False, 'error': f'打开失败：{exc}'}
 
     def save_file(self, data: dict[str, Any], save_as: bool = False) -> dict[str, Any]:
         try:
             if save_as or self._storage.path is None:
-                result = self._window.create_file_dialog(webview.SAVE_DIALOG, save_filename=f"{data.get('title', '笔记')}.json", file_types=('Supernote JSON (*.json)',))
-                if not result:
+                path = self._selected_path(self._window.create_file_dialog(webview.FileDialog.SAVE, save_filename=f"{data.get('title', '笔记')}.json", file_types=('Supernote JSON (*.json)',)))
+                if path is None:
                     return {'ok': True, 'value': False}
-                self._storage.path = Path(result)
+                self._storage.path = path
             self._storage.write(data)
             self.dirty_value = False
             return {'ok': True, 'value': True}
