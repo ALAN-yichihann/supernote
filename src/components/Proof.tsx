@@ -80,9 +80,14 @@ export default function ProofView({ target, close }: { target: string; close: ()
   const graph = useMemo(() => buildGraph(note, region, resolution), [note, region, resolution]);
   const optionalTargets = useMemo(() => [...region].filter(id => isConclusion(note, id) && incomingLinks(note, id).length > 1), [note, region]);
 
+  const goalLabel = goal?.title.trim() || plain(goal?.content || '', 24) || '目标';
   const imageContent = order.map(id => note.nodes.find(unit => unit.id === id)).filter((unit): unit is NonNullable<typeof unit> => !!unit?.image).map((unit, index) => `![推导图片 ${index + 1}](${unit.image})`).join('\n\n');
-  const generatedContent = order.map(id => note.nodes.find(unit => unit.id === id)?.content || '').join('\n\n');
-  const content = [imageContent, text || generatedContent].filter(Boolean).join('\n\n');
+  const stageTitle = (id: string) => {
+    const unit = note.nodes.find(item => item.id === id);
+    return unit && id !== target && unit.tags.includes('conclusion') ? `## ${unit.title.trim() || plain(unit.content, 20)}` : '';
+  };
+  const generatedContent = [`# 推导：${goalLabel}`, imageContent, ...order.map(id => [stageTitle(id), note.nodes.find(unit => unit.id === id)?.content || ''].filter(Boolean).join('\n\n'))].filter(Boolean).join('\n\n');
+  const content = text || generatedContent;
   const proof: Proof | null = useMemo(() => {
     if (resolution.error || !order.length || !validOrder(order, resolution.deps)) return null;
     try { return snapshot(note, target, resolution.nodes, resolution.edges, order); } catch { return null; }
@@ -182,7 +187,7 @@ export default function ProofView({ target, close }: { target: string; close: ()
           </li>)}
         </ol>
         {resolution.error && <p className="field-error">{resolution.error}</p>}
-        <button className="generate" disabled={!!resolution.error || !order.length} onClick={() => setText([imageContent, generatedContent].filter(Boolean).join('\n\n'))}><Sparkles size={16}/>生成推导文本</button>
+        <button className="generate" disabled={!!resolution.error || !order.length} onClick={() => setText(generatedContent)}><Sparkles size={16}/>生成推导文本</button>
       </div>
       <div className="proof-text">
         {editing ? <textarea value={content} onChange={e => setText(e.target.value)} placeholder="选择推导方式并调整顺序后生成推导过程"/> : <Markdown>{content || '在左侧选择推导路径。'}</Markdown>}

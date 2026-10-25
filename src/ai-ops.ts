@@ -10,9 +10,9 @@ function nodePosition(units: Unit[], domainId: string) {
   const right = siblings.reduce((max, unit) => Math.max(max, unit.position.x), 0);
   return { x: siblings.length ? right + 380 : 40, y: 80 + (siblings.length % 4) * 120 };
 }
-function domainPosition(domains: Domain[]) {
-  const right = domains.reduce((max, domain) => Math.max(max, domain.position.x), 0);
-  return { x: domains.length ? right + 760 : 60, y: 60 };
+function domainWidth(units: Unit[], domainId: string) {
+  const children = units.filter(unit => unit.domainId === domainId);
+  return Math.max(520, ...children.map(unit => unit.position.x + 370));
 }
 
 export function normalizeOperations(note: Notebook, raw: unknown): Operation[] {
@@ -21,11 +21,12 @@ export function normalizeOperations(note: Notebook, raw: unknown): Operation[] {
   const idMap = new Map<string, string>();
   const mapId = (id: unknown) => idMap.get(String(id)) ?? String(id);
   const domains: Domain[] = [...note.domains];
+  const created: Domain[] = [];
   const units: Unit[] = [...note.nodes];
   const links: Link[] = [...note.edges];
   const resolveTag = (tag: string) => note.tags.find(defined => defined.id === tag)?.id ?? note.tags.find(defined => defined.name === tag)?.id;
 
-  // 域优先，保证单位可以引用新建的域。
+  // 域优先，保证单位可以引用新建的域；位置等新增单位确定后再排布。
   for (const item of items) {
     if (item.action !== 'put' || item.entity !== 'domains' || !item.id || !object(item.value)) continue;
     const id = String(item.id);
@@ -38,9 +39,9 @@ export function normalizeOperations(note: Notebook, raw: unknown): Operation[] {
     }
     const nextId = uid();
     idMap.set(id, nextId);
-    const domain: Domain = { id: nextId, name: text(item.value.name, 'AI 整理'), position: domainPosition(domains) };
+    const domain: Domain = { id: nextId, name: text(item.value.name, 'AI 整理'), position: { x: 0, y: 60 } };
     domains.push(domain);
-    operations.push({ action: 'put', entity: 'domains', id: nextId, value: domain });
+    created.push(domain);
   }
 
   for (const item of items) {
@@ -68,6 +69,14 @@ export function normalizeOperations(note: Notebook, raw: unknown): Operation[] {
       units.push(unit);
       operations.push({ action: 'put', entity: 'nodes', id: nextId, value: unit });
     }
+  }
+
+  // 新增单位确定后，按真实域宽依次排布新域，避免与现有域或彼此重叠。
+  let cursor = note.domains.reduce((max, domain) => Math.max(max, domain.position.x + domainWidth(units, domain.id)), 0);
+  for (const domain of created) {
+    domain.position = { x: cursor + 80, y: 60 };
+    cursor += domainWidth(units, domain.id) + 80;
+    operations.push({ action: 'put', entity: 'domains', id: domain.id, value: domain });
   }
 
   const pairs = new Set(links.map(link => [link.source, link.target].sort().join('|')));

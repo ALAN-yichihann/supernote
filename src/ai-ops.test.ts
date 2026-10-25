@@ -74,4 +74,22 @@ describe('AI 图谱操作规范化', () => {
     ]);
     expect(operations).toEqual([]);
   });
+
+  it('新建域排在现有域右侧，不会重叠', () => {
+    const source = base();
+    source.nodes[0].position = { x: 800, y: 80 };
+    const operations = normalizeOperations(source, [
+      { action: 'put', entity: 'domains', id: 'd2', value: { name: '新域二' } },
+      { action: 'put', entity: 'nodes', id: 'n2', value: { domainId: 'd2', content: '节点二' } },
+      { action: 'put', entity: 'domains', id: 'd3', value: { name: '新域三' } },
+      { action: 'put', entity: 'nodes', id: 'n3', value: { domainId: 'd3', content: '节点三' } },
+    ]);
+    const next = applyOperations(source, operations);
+    const width = (domainId: string) => Math.max(520, ...next.nodes.filter(unit => unit.domainId === domainId).map(unit => unit.position.x + 370));
+    const d1 = next.domains.find(domain => domain.id === 'd1')!;
+    const d2 = next.domains.find(domain => domain.name === '新域二')!;
+    const d3 = next.domains.find(domain => domain.name === '新域三')!;
+    expect(d2.position.x).toBeGreaterThanOrEqual(d1.position.x + width(d1.id));
+    expect(d3.position.x).toBeGreaterThanOrEqual(d2.position.x + width(d2.id));
+  });
 });
