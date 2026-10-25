@@ -39,3 +39,6 @@ Thumbs.db
 # 本地笔记：可能包含个人学习内容
 notes/
 *.note.json
+
+# AGENT提示词
+human_prompts/
