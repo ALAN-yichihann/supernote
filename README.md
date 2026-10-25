@@ -233,8 +233,8 @@ powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 
 ## 相关文档
 
-- [AGENTS.md](AGENTS.md)：开发指南（架构、命令、约束）；
-- [指令.md](指令.md)：需求与历次问题反馈记录。
+- [AGENTS.md](AGENTS.md)：开发指南（架构、命令、约束）。
+- 需求与历次问题反馈记录保存在本地的 `human_prompts/` 目录，不随仓库发布。
 
 ## 约定
 
