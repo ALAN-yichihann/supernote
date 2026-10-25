@@ -189,14 +189,16 @@ powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 
 ## 提示词定制
 
-- 编辑 `prompts/qa.md`（问答 AI）或 `prompts/graph.md`（思维导图 AI）；
-- 提示词里已列出 `search_units`、`get_neighbors`、`create_domain`、`create_unit`、`update_unit`、`create_link`、`delete_unit` 等工具约定；
-- 保存文件后重新发起请求即可生效，无需重启应用。
+- `prompts/qa.md`（问答 AI）：负责问题解答、知识总结、知识整理规划；需要改图时输出可直接执行的「任务单」，不直接改写图谱。
+- `prompts/graph.md`（思维导图 AI）：只负责图谱结构化修改，按图模型约束把任务单转换成新增域 / 单位 / 连接 / 标签的修改清单。
+- 两个提示词都写明了当前宿主的文本输出方式；若宿主声明提供 `search_units`、`get_neighbors`、`create_domain`、`create_unit`、`update_unit`、`create_link`、`delete_unit` 等工具，则优先调用工具并等待结果。
+- 保存文件后重新发起请求即可生效，无需重启应用；也可用 `SUPERNOTE_PROMPT_DIR` 指向自定义提示词目录。
 
 ## 当前限制
 
 - AI 依赖 OpenAI 兼容的 `/chat/completions` 流式接口，暂不支持其他协议；
 - 桌面端 `start_ai` 目前把整份笔记 JSON 与用户问题发给问答 AI，界面上加入对话的基本单位、图片与历史消息尚未随请求发送；
+- 聊天入口固定使用问答 AI，思维导图 AI 的配置与提示词已保留，但独立调用通道尚未接入，修改清单需要手动执行；工具调用（事务写入）同样尚未实现；
 - 推导快照可以导出并写入笔记，但「打开保存的推导过程」入口尚未接入文件选择流程；
 - 推导子图按最长依赖链自动分层，依赖层级很深时整体会缩小显示，可在画布上缩放查看；
 - 浏览器模式不支持 AI、系统对话框和凭据存储。
