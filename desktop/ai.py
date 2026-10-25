@@ -13,11 +13,44 @@ import httpx
 from .prompts import load_prompt
 
 
+def iter_json_objects(text: str) -> list[str]:
+    """找出文本中括号配平的 JSON 对象，跳过字符串内的花括号。"""
+    blocks: list[str] = []
+    for start, char in enumerate(text):
+        if char != '{':
+            continue
+        depth = 0
+        in_string = False
+        escaped = False
+        for index in range(start, len(text)):
+            current = text[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif current == '\\':
+                    escaped = True
+                elif current == '"':
+                    in_string = False
+                continue
+            if current == '"':
+                in_string = True
+            elif current == '{':
+                depth += 1
+            elif current == '}':
+                depth -= 1
+                if depth == 0:
+                    blocks.append(text[start:index + 1])
+                    break
+    return blocks
+
+
 def extract_operations(text: str) -> list[dict[str, Any]]:
-    """从回答中提取 ```json {"operations": [...]}``` 事务块。"""
-    for match in re.finditer(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL):
+    """从回答中提取事务块，兼容代码块标记、大小写、无标记 JSON 与前后说明。"""
+    candidates = [match.group(1) for match in re.finditer(r"```(?:json|jsonc)?\s*(\{.*?\})\s*```", text, re.DOTALL | re.IGNORECASE)]
+    candidates.extend(iter_json_objects(text))
+    for source in candidates:
         try:
-            data = json.loads(match.group(1))
+            data = json.loads(source)
         except json.JSONDecodeError:
             continue
         operations = data.get("operations") if isinstance(data, dict) else None

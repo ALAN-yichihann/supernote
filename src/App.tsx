@@ -21,12 +21,29 @@ function TagEditor() { const { note, operate } = useStore(); const [name, setNam
 function SettingsEditor() {
   const [qa, setQa] = useState({ endpoint: '', model: '', key: '' });
   const [graph, setGraph] = useState({ endpoint: '', model: '', key: '' });
+  const [saved, setSaved] = useState({ qa: false, graph: false });
+  useEffect(() => {
+    let active = true;
+    if (!isDesktop()) return;
+    api().get_settings().then(result => {
+      if (!active || !result.ok) return;
+      setQa({ endpoint: result.value.qa.endpoint, model: result.value.qa.model, key: '' });
+      setGraph({ endpoint: result.value.graph.endpoint, model: result.value.graph.model, key: '' });
+      setSaved({ qa: !!result.value.qa.hasKey, graph: !!result.value.graph.hasKey });
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const save = async () => {
     try {
-      if (isDesktop()) { const result = await api().save_settings({ qa, graph }); if (!result.ok) throw new Error(result.error); }
+      if (!isDesktop()) { alert('设置需要桌面模式'); return; }
+      const result = await api().save_settings({ qa, graph });
+      if (!result.ok) throw new Error(result.error);
+      setSaved({ qa: saved.qa || !!qa.key, graph: saved.graph || !!graph.key });
+      setQa(current => ({ ...current, key: '' }));
+      setGraph(current => ({ ...current, key: '' }));
       alert('设置已保存');
     } catch (e) { alert(e instanceof Error ? e.message : '设置保存失败'); }
   };
-  return <div className="settings-editor"><p className="muted">两个 AI 独立配置；KEY 由桌面宿主保存到系统凭据存储。</p><fieldset><legend>问答 AI</legend><label>端点<input value={qa.endpoint} onChange={e => setQa({ ...qa, endpoint: e.target.value })} placeholder="https://api.example.com/v1"/></label><label>模型<input value={qa.model} onChange={e => setQa({ ...qa, model: e.target.value })} placeholder="模型名称"/></label><label>KEY<input type="password" value={qa.key} onChange={e => setQa({ ...qa, key: e.target.value })} placeholder="问答 AI API KEY"/></label></fieldset><fieldset><legend>思维导图 AI</legend><label>端点<input value={graph.endpoint} onChange={e => setGraph({ ...graph, endpoint: e.target.value })} placeholder="https://api.example.com/v1"/></label><label>模型<input value={graph.model} onChange={e => setGraph({ ...graph, model: e.target.value })} placeholder="模型名称"/></label><label>KEY<input type="password" value={graph.key} onChange={e => setGraph({ ...graph, key: e.target.value })} placeholder="思维导图 AI API KEY"/></label></fieldset><button className="primary" onClick={save}>保存设置</button></div>;
+  return <div className="settings-editor"><p className="muted">两个 AI 独立配置；KEY 由桌面宿主保存到系统凭据存储，留空则保留已保存的 KEY。</p><fieldset><legend>问答 AI</legend><label>端点<input value={qa.endpoint} onChange={e => setQa({ ...qa, endpoint: e.target.value })} placeholder="https://api.example.com/v1"/></label><label>模型<input value={qa.model} onChange={e => setQa({ ...qa, model: e.target.value })} placeholder="模型名称"/></label><label>KEY<input type="password" value={qa.key} onChange={e => setQa({ ...qa, key: e.target.value })} placeholder={saved.qa ? '已保存，留空保持不变' : '问答 AI API KEY'}/></label></fieldset><fieldset><legend>思维导图 AI</legend><label>端点<input value={graph.endpoint} onChange={e => setGraph({ ...graph, endpoint: e.target.value })} placeholder="https://api.example.com/v1"/></label><label>模型<input value={graph.model} onChange={e => setGraph({ ...graph, model: e.target.value })} placeholder="模型名称"/></label><label>KEY<input type="password" value={graph.key} onChange={e => setGraph({ ...graph, key: e.target.value })} placeholder={saved.graph ? '已保存，留空保持不变' : '思维导图 AI API KEY'}/></label></fieldset><button className="primary" onClick={save}>保存设置</button></div>;
 }
 export default App;

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Bot, ChevronRight, ImagePlus, Plus, Send, Square, X } from 'lucide-react';
+import { Bot, Check, ChevronRight, Copy, ImagePlus, Plus, Send, Square, X } from 'lucide-react';
 import { api, isDesktop } from '../bridge';
 import { useStore } from '../store';
 import { normalizeOperations } from '../ai-ops';
@@ -7,15 +7,15 @@ import { Markdown } from './Common';
 import type { Notebook, Operation } from '../core';
 
 interface ChatMessage { role: 'user' | 'assistant'; text: string }
-const GRAPH_TASK = /```graph\s*([\s\S]*?)```/;
+const GRAPH_TASK = /```\s*graph\s*([\s\S]*?)```/i;
+const GRAPH_BLOCK = /```\s*graph\s*[\s\S]*?```/gi;
 
 export default function AI({ width, setWidth, hidden = false, incomingNodes = [], onConsumeNodes }: { width: number; setWidth: (w: number) => void; hidden?: boolean; incomingNodes?: string[]; onConsumeNodes?: (id?: string) => void }) {
-  const { note } = useStore(); const [messages, setMessages] = useState<ChatMessage[]>([]); const [input, setInput] = useState(''); const [busy, setBusy] = useState(false); const [attached, setAttached] = useState<string[]>([]); const activeSession = useRef('');
+  const { note } = useStore(); const [messages, setMessages] = useState<ChatMessage[]>([]); const [input, setInput] = useState(''); const [busy, setBusy] = useState(false); const [attached, setAttached] = useState<string[]>([]); const [copied, setCopied] = useState<number | null>(null); const activeSession = useRef('');
   const selected = [...new Set([...attached, ...incomingNodes])];
 
   // 图谱 AI 返回的操作先规范化为可执行命令，再校验笔记版本并一次性提交。
-  function applyGraph(revision: number, raw: Operation[]) {
-    try {
+  function applyGraph(revision: number, raw: Operation[]) {    try {
       const state = useStore.getState();
       if (state.revision !== revision) throw new Error('笔记在 AI 处理期间被修改，本次改动未应用');
       const operations = normalizeOperations(state.note, raw);
@@ -25,6 +25,12 @@ export default function AI({ width, setWidth, hidden = false, incomingNodes = []
     } catch (e) {
       return `\n\n⚠️ 图谱修改未应用：${e instanceof Error ? e.message : String(e)}`;
     }
+  }
+
+  function copy(index: number) {
+    const text = messages[index]?.text;
+    if (!text) return;
+    navigator.clipboard?.writeText(text).then(() => { setCopied(index); setTimeout(() => setCopied(null), 1500); }).catch(() => useStore.getState().setError('复制失败'));
   }
 
   // 两个 AI 共用同一套流式协议，按 kind 选择配置与提示词。
@@ -56,7 +62,7 @@ export default function AI({ width, setWidth, hidden = false, incomingNodes = []
       if (!isDesktop()) throw new Error('AI 对话需要桌面模式并完成 API 设置');
       const qa = await stream('qa', text, note, messages, selected);
       const task = qa.text.match(GRAPH_TASK)?.[1]?.trim();
-      let answer = qa.text.replace(/```graph\s*[\s\S]*?```/g, '').trim();
+      let answer = qa.text.replace(GRAPH_BLOCK, '').trim();
       if (task) {
         try {
           const graph = await stream('graph', task, useStore.getState().note, []);
@@ -72,6 +78,6 @@ export default function AI({ width, setWidth, hidden = false, incomingNodes = []
   }
 
   return <aside className={`ai-panel${hidden ? ' hidden' : ''}`} style={{ width }}><div className="resize-handle ai-resize" onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) setWidth(Math.max(320, Math.min(window.innerWidth - 100, window.innerWidth - e.clientX))); }}/><header className="ai-header"><div><span className="eyebrow"><Bot size={13}/> AI 学习助手</span><h2>问问你的知识</h2></div><button className="round-button" title="新建对话" onClick={() => { setMessages([]); setAttached([]); }}><Plus size={17}/></button></header>
-    <div className="ai-messages">{!messages.length && <div className="ai-welcome"><Bot size={36}/><h3>从一个问题开始</h3><p>在导图节点右键选择“添加到 AI 对话框”，再输入你的问题。</p><div className="suggestions"><button onClick={() => setInput('帮我解释当前导图中的核心结论')}>解释核心结论 <ChevronRight size={14}/></button><button onClick={() => setInput('检查这部分推导是否完整')}>检查推导 <ChevronRight size={14}/></button></div></div>}{messages.map((m, i) => <div key={i} className={`message ${m.role}`}><span className="message-role">{m.role === 'user' ? '你' : 'AI'}</span>{m.role === 'assistant' ? <div className="message-body"><Markdown>{m.text}</Markdown></div> : <div>{m.text}</div>}</div>)}</div>
+    <div className="ai-messages">{!messages.length && <div className="ai-welcome"><Bot size={36}/><h3>从一个问题开始</h3><p>在导图节点右键选择“添加到 AI 对话框”，再输入你的问题。</p><div className="suggestions"><button onClick={() => setInput('帮我解释当前导图中的核心结论')}>解释核心结论 <ChevronRight size={14}/></button><button onClick={() => setInput('检查这部分推导是否完整')}>检查推导 <ChevronRight size={14}/></button></div></div>}{messages.map((m, i) => <div key={i} className={`message ${m.role}`}><div className="message-head"><span className="message-role">{m.role === 'user' ? '你' : 'AI'}</span>{m.role === 'assistant' && <button className="copy-button" title={copied === i ? '已复制' : '复制回答'} onClick={() => copy(i)}>{copied === i ? <Check size={12}/> : <Copy size={12}/>}</button>}</div>{m.role === 'assistant' ? <div className="message-body"><Markdown>{m.text}</Markdown></div> : <div>{m.text}</div>}</div>)}</div>
     <div className="ai-composer">{selected.length > 0 && <div className="attachments">{selected.map(nodeId => <span key={nodeId}>{note.nodes.find(n => n.id === nodeId)?.content.slice(0, 22)} <button onClick={() => { setAttached(a => a.filter(x => x !== nodeId)); onConsumeNodes?.(nodeId); }}><X size={12}/></button></span>)}</div>}<textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } }} placeholder="输入问题，Enter 发送"/><div className="composer-actions"><label title="添加图片"><ImagePlus size={17}/><input type="file" accept="image/*" hidden/></label><span className="composer-tip">右键节点添加 · Shift+Enter 换行</span>{busy ? <button className="send-button stop" onClick={() => api().cancel_ai(activeSession.current)}><Square size={15}/></button> : <button className="send-button" disabled={!input.trim()} onClick={() => { onConsumeNodes?.(); ask(); }}><Send size={15}/></button>}</div></div></aside>;
 }
