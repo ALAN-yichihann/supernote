@@ -38,14 +38,16 @@ class API:
             self.storage.set_secret(f'{ident}_model',str(entry.get('model','')))
             if entry.get('key'): self.storage.set_secret(f'{ident}_key',str(entry['key']))
         return {'ok':True,'value':None}
-    def start_ai(self, ident: str, prompt: str, nodes: list[str], images: list[str], note: dict[str, Any], history: list[dict[str, str]]) -> dict[str, Any]:
+    def start_ai(self, ident: str, prompt: str, nodes: list[str], images: list[str], note: dict[str, Any], history: list[dict[str, str]], kind: str = 'qa') -> dict[str, Any]:
         del nodes, images, history
-        endpoint = self.storage.get_secret('qa_endpoint') or ''
-        model = self.storage.get_secret('qa_model') or ''
-        key = self.storage.get_secret('qa_key') or ''
+        kind = kind if kind in ('qa', 'graph') else 'qa'
+        label = '思维导图' if kind == 'graph' else '问答'
+        endpoint = self.storage.get_secret(f'{kind}_endpoint') or ''
+        model = self.storage.get_secret(f'{kind}_model') or ''
+        key = self.storage.get_secret(f'{kind}_key') or ''
         if not endpoint or not model or not key:
-            return {'ok': False, 'error': '请先配置问答 AI 的端点、模型和 KEY'}
-        self.ai.start(ident, endpoint, key, model, prompt, note, 'qa')
+            return {'ok': False, 'error': f'请先配置{label} AI 的端点、模型和 KEY'}
+        self.ai.start(ident, endpoint, key, model, prompt, note, kind)
         return {'ok': True, 'value': None}
     def poll_ai(self, ident: str) -> dict[str, Any]: return {'ok': True, 'value': self.ai.poll(ident)}
     def cancel_ai(self, ident: str) -> dict[str, Any]: self.ai.cancel(ident); return {'ok': True, 'value': None}

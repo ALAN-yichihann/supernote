@@ -55,3 +55,7 @@
 .proof-path .generate{position:sticky;bottom:-1px;margin-top:10px;box-shadow:0 -8px 14px #fff}
 /* 问题11：右键菜单分组分隔线 */
 .menu-divider{height:1px;margin:5px 8px;background:#e7eef6}
+/* AI 双通道切换 */
+.ai-modes{display:flex;gap:6px;padding:8px 18px;border-bottom:1px solid #eef3f9}
+.ai-modes button{display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:6px;background:#f1f5fa;color:#6e829c;font-size:11px}
+.ai-modes button.active{background:#e8f2ff;color:#3979c7}

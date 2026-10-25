@@ -2,7 +2,7 @@ import type { Notebook, Operation, Proof } from './core';
 type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export interface ModelConfig { endpoint: string; model: string; key?: string; hasKey?: boolean }
 export type Settings = Record<'qa' | 'graph', ModelConfig>;
-export interface AIEvent { type: 'text' | 'status' | 'done' | 'error'; text?: string; operations?: Operation[] }
+export interface AIEvent { type: 'text' | 'status' | 'done' | 'error' | 'operations'; text?: string; operations?: Operation[] }
 interface API {
   open_file(): Promise<Result<unknown | null>>;
   save_file(data: Notebook | Proof, saveAs: boolean): Promise<Result<boolean>>;
@@ -11,7 +11,7 @@ interface API {
   close_window(): Promise<void>;
   get_settings(): Promise<Result<Settings>>;
   save_settings(value: Settings): Promise<Result<null>>;
-  start_ai(id: string, prompt: string, nodes: string[], images: string[], note: Notebook, history: {role: string; content: string}[]): Promise<Result<null>>;
+  start_ai(id: string, prompt: string, nodes: string[], images: string[], note: Notebook, history: {role: string; content: string}[], kind?: 'qa' | 'graph'): Promise<Result<null>>;
   poll_ai(id: string): Promise<Result<AIEvent[]>>;
   cancel_ai(id: string): Promise<Result<null>>;
 }

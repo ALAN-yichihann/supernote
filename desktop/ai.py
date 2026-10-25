@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 from dataclasses import dataclass, field
 from queue import Empty, Queue
@@ -10,6 +11,19 @@ from typing import Any
 import httpx
 
 from .prompts import load_prompt
+
+
+def extract_operations(text: str) -> list[dict[str, Any]]:
+    """从回答中提取 ```json {"operations": [...]}``` 事务块。"""
+    for match in re.finditer(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL):
+        try:
+            data = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            continue
+        operations = data.get("operations") if isinstance(data, dict) else None
+        if isinstance(operations, list) and all(isinstance(item, dict) for item in operations):
+            return operations
+    return []
 
 
 @dataclass
@@ -28,6 +42,7 @@ class AIService:
         self.sessions[ident] = session
 
         def run() -> None:
+            parts: list[str] = []
             try:
                 body = {"model": model, "stream": True, "messages": [{"role": "system", "content": load_prompt(kind)}, {"role": "user", "content": f"当前笔记：{json.dumps(note, ensure_ascii=False)}\n\n用户问题：{prompt}"}]}
                 headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
@@ -46,7 +61,11 @@ class AIService:
                         except (KeyError, IndexError, TypeError, json.JSONDecodeError):
                             continue
                         if delta:
+                            parts.append(delta)
                             session.events.put({"type": "text", "text": delta})
+                operations = extract_operations("".join(parts))
+                if operations:
+                    session.events.put({"type": "operations", "operations": operations})
                 session.events.put({"type": "done"})
             except Exception as exc:  # noqa: BLE001 网络错误需要返回到界面
                 session.events.put({"type": "error", "text": f"AI 请求失败：{exc}"})
