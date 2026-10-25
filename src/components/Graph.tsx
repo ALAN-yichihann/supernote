@@ -11,7 +11,7 @@ function DomainNode({ data }: NodeProps<Node<DomainData>>) { return <div classNa
 function Card({ data }: NodeProps<Node<CardData>>) {
   const [open, setOpen] = useState<string[]>([]);
   return <div className={`unit-group ${data.filtered ? 'dimmed' : ''}`}>{data.units.map(u => <div key={u.id} className={`unit-card ${u.tags.includes('fact') ? 'fact' : u.tags.includes('conclusion') ? 'conclusion' : ''} ${data.highlighted.includes(u.id) ? 'highlighted' : ''}`} onContextMenu={e => { e.preventDefault(); e.stopPropagation(); data.onMenu(e, u.id); }} onClick={e => { e.stopPropagation(); data.onPick(u.id); }}>
-    <Handle type="target" position={Position.Left} id={`in-${u.id}`}/>{u.image && <img className="unit-image" src={u.image} alt="基本单位图片"/>}<Markdown>{u.content}</Markdown>{u.annotation && <button className="annotation-toggle nodrag" title="显示或隐藏批注" onClick={e => { e.stopPropagation(); setOpen(open.includes(u.id) ? open.filter(id => id !== u.id) : [...open, u.id]); }}><MessageSquare size={14}/></button>}{open.includes(u.id) && <div className="annotation"><Markdown>{u.annotation}</Markdown></div>}<Handle type="source" position={Position.Right} id={`out-${u.id}`}/></div>)}</div>;
+    <Handle type="target" position={Position.Left} id={`in-${u.id}`}/>{u.image && <img className="unit-image" src={u.image} alt="基本单位图片"/>}{u.title && <strong className="unit-title">{u.title}</strong>}<Markdown>{u.content}</Markdown>{u.annotation && <button className="annotation-toggle nodrag" title="显示或隐藏批注" onClick={e => { e.stopPropagation(); setOpen(open.includes(u.id) ? open.filter(id => id !== u.id) : [...open, u.id]); }}><MessageSquare size={14}/></button>}{open.includes(u.id) && <div className="annotation"><Markdown>{u.annotation}</Markdown></div>}<Handle type="source" position={Position.Right} id={`out-${u.id}`}/></div>)}</div>;
 }
 const nodeTypes = { unit: Card, group: DomainNode };
 interface Props { editing?: string; onEdit: (d: EditDraft) => void; onProof: (id: string) => void; onAddToAI: (id: string) => void; filter: string; filterMode: string }
@@ -21,7 +21,7 @@ function Canvas({ editing, onEdit, onProof, onAddToAI, filter, filterMode }: Pro
   const [connecting, setConnecting] = useState<{ id: string; mode: string }>();
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const openMenu = useCallback((e: any, kind: string, id?: string) => { e.preventDefault(); if (locked) return; setMenu({ x: Math.min(e.clientX, window.innerWidth - 240), y: Math.min(e.clientY, window.innerHeight - 470), kind, id, pos: flow.screenToFlowPosition({ x: e.clientX, y: e.clientY }) }); }, [flow, locked]);
-  function connect(target: string) { if (!connecting) return; safely(() => { const id = uid(); operate([{ action: 'put', entity: 'edges', id, value: { id, source: connecting.mode === 'in' ? target : connecting.id, target: connecting.mode === 'in' ? connecting.id : target, direction: connecting.mode === 'both' ? 'both' : 'single' } }]); setConnecting(undefined); }); }
+  function connect(target: string) { if (!connecting) return; const edgeTarget = connecting.mode === 'in' ? connecting.id : target; safely(() => { if (note.nodes.find(u => u.id === edgeTarget)?.tags.includes('fact')) throw new Error('基本事实只允许出连接，不能作为推导目标'); const id = uid(); operate([{ action: 'put', entity: 'edges', id, value: { id, source: connecting.mode === 'in' ? target : connecting.id, target: connecting.mode === 'in' ? connecting.id : target, direction: connecting.mode === 'both' ? 'both' : 'single' } }]); setConnecting(undefined); }); }
   const groups = useMemo(() => mergeGroups(note, editing), [note, editing]);
   const mapping = new Map<string, string>(); groups.forEach(g => g.forEach(id => mapping.set(id, `group-${g[0]}`)));
   const graphNodes: Node[] = note.domains.map(d => {
@@ -37,7 +37,7 @@ function Canvas({ editing, onEdit, onProof, onAddToAI, filter, filterMode }: Pro
   const nodes = local || graphNodes;
   function addUnit(domainId: string, source?: string, mode?: string) {
     const parent = note.domains.find(d => d.id === domainId)!; const origin = note.nodes.find(u => u.id === source); const id = uid();
-    const unit: Unit = { id, domainId, content: '', tags: ['inside'], annotation: '', position: origin ? { x: origin.position.x + 390, y: origin.position.y } : { x: Math.max(25, (menu?.pos.x || parent.position.x + 40) - parent.position.x), y: Math.max(65, (menu?.pos.y || parent.position.y + 80) - parent.position.y) } };
+    const unit: Unit = { id, domainId, title: '', content: '', tags: ['inside'], annotation: '', position: origin ? { x: origin.position.x + 390, y: origin.position.y } : { x: Math.max(25, (menu?.pos.x || parent.position.x + 40) - parent.position.x), y: Math.max(65, (menu?.pos.y || parent.position.y + 80) - parent.position.y) } };
     const eid = uid(); const extra: Operation[] = source ? [{ action: 'put', entity: 'edges', id: eid, value: { id: eid, source: mode === 'in' ? id : source, target: mode === 'in' ? source : id, direction: mode === 'both' ? 'both' : 'single' } }] : [];
     onEdit({ unit, extra, isNew: true });
   }

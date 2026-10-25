@@ -49,7 +49,7 @@ function buildGraph(note: Notebook, region: Set<string>, resolution: ReturnType<
     ids.sort((a, b) => note.nodes.findIndex(u => u.id === a) - note.nodes.findIndex(u => u.id === b));
     ids.forEach((id, index) => {
       const unit = note.nodes.find(u => u.id === id)!;
-      nodes.push({ id, type: 'proof', position: { x: (index - (ids.length - 1) / 2) * 172, y: depth * 84 }, draggable: false, data: { label: plain(unit.content, 30), fact: unit.tags.includes('fact'), conclusion: unit.tags.includes('conclusion'), active: resolution.nodes.includes(id) } });
+      nodes.push({ id, type: 'proof', position: { x: (index - (ids.length - 1) / 2) * 172, y: depth * 84 }, draggable: false, data: { label: unit.title.trim() || plain(unit.content, 30), fact: unit.tags.includes('fact'), conclusion: unit.tags.includes('conclusion'), active: resolution.nodes.includes(id) } });
     });
   }
   const edges: FlowEdge[] = links.map(link => {
@@ -64,6 +64,7 @@ function buildGraph(note: Notebook, region: Set<string>, resolution: ReturnType<
 export default function ProofView({ target, close }: { target: string; close: () => void }) {
   const { note } = useStore();
   const [choices, setChoices] = useState<Record<string, string>>({});
+  const [stops, setStops] = useState<string[]>([]);
   const [manual, setManual] = useState<{ signature: string; order: string[] }>();
   const [drag, setDrag] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
@@ -72,8 +73,9 @@ export default function ProofView({ target, close }: { target: string; close: ()
 
   const goal = note.nodes.find(unit => unit.id === target);
   const region = useMemo(() => proofRegion(note, target), [note, target]);
-  const resolution = useMemo(() => resolveProof(note, target, choices), [note, target, choices]);
-  const signature = useMemo(() => `${target}|${[...resolution.nodes].sort().join(',')}|${[...resolution.edges].sort().join(',')}`, [target, resolution]);
+  const activeStops = useMemo(() => stops.filter(id => id !== target && region.has(id) && isConclusion(note, id)), [stops, target, region, note]);
+  const resolution = useMemo(() => resolveProof(note, target, choices, activeStops), [note, target, choices, activeStops]);
+  const signature = useMemo(() => `${target}|${activeStops.join(',')}|${[...resolution.nodes].sort().join(',')}|${[...resolution.edges].sort().join(',')}`, [target, activeStops, resolution]);
   const order = manual?.signature === signature ? manual.order : resolution.order;
   const graph = useMemo(() => buildGraph(note, region, resolution), [note, region, resolution]);
   const optionalTargets = useMemo(() => [...region].filter(id => isConclusion(note, id) && incomingLinks(note, id).length > 1), [note, region]);
@@ -99,6 +101,14 @@ export default function ProofView({ target, close }: { target: string; close: ()
     setChoices(current => ({ ...current, [target]: edge }));
     setText('');
   }
+  function toggleStop(id: string) {
+    setStops(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+    setText('');
+  }
+  const labelOf = (id: string) => {
+    const unit = note.nodes.find(item => item.id === id);
+    return unit?.title.trim() || unit?.content.replace(/[#*_`$]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40) || '空单位';
+  };
   // 点击子图中的单位或连接：把它接入推导路径，沿途结论单位的入连接随之切换。
   function switchNode(node: string) {
     if (resolution.nodes.includes(node)) return;
@@ -158,6 +168,7 @@ export default function ProofView({ target, close }: { target: string; close: ()
           })}
         </div>}
         <div className="proof-section-title"><span className="eyebrow">推导顺序</span><span className="proof-hint">{order.length} 个模块 · 拖动调整</span></div>
+        {order.some(id => isConclusion(note, id) && id !== target) && <p className="proof-hint" style={{ margin: '4px 0 0' }}>点「起点」可把阶段性结论作为证明起点，跳过更基础的前置。</p>}
         <ol className="module-list">
           {order.map((id, index) => <li key={id} draggable className={drag === index ? 'dragging' : ''}
             onDragStart={e => { setDrag(index); e.dataTransfer.setData('text/plain', String(index)); e.dataTransfer.effectAllowed = 'move'; }}
@@ -166,7 +177,8 @@ export default function ProofView({ target, close }: { target: string; close: ()
             onDrop={e => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (Number.isInteger(from) && from >= 0 && from < order.length) move(from, index); setDrag(null); }}>
             <GripVertical size={13}/>
             <span className="module-index">{index + 1}</span>
-            <span className="module-text">{note.nodes.find(unit => unit.id === id)?.content.replace(/[#*_`$]/g, ' ').slice(0, 40) || '空单位'}</span>
+            <span className="module-text">{labelOf(id)}</span>
+            {isConclusion(note, id) && id !== target && <button className={`stop-button${activeStops.includes(id) ? ' active' : ''}`} title={activeStops.includes(id) ? '取消起点' : '以此为阶段性结论，跳过更基础的前置'} onClick={e => { e.preventDefault(); e.stopPropagation(); toggleStop(id); }}>起点</button>}
           </li>)}
         </ol>
         {resolution.error && <p className="field-error">{resolution.error}</p>}

@@ -7,13 +7,13 @@
     { "id": "d-example", "name": "示例推导", "position": { "x": 0, "y": 0 } }
   ],
   "nodes": [
-    { "id": "f1", "domainId": "d-example", "content": "基本事实 1：$a+b=b+a$", "tags": ["fact", "inside"], "annotation": "", "position": { "x": 20, "y": 30 } },
-    { "id": "u2", "domainId": "d-example", "content": "基本单位 2：交换后仍成立", "tags": ["inside"], "annotation": "", "position": { "x": 280, "y": 30 } },
-    { "id": "u3", "domainId": "d-example", "content": "基本单位 3：整理同类项", "tags": ["inside"], "annotation": "", "position": { "x": 280, "y": 170 } },
-    { "id": "u4", "domainId": "d-example", "content": "基本单位 4：化简为最简式", "tags": ["inside"], "annotation": "", "position": { "x": 540, "y": 170 } },
-    { "id": "u5", "domainId": "d-example", "content": "基本单位 5：两条路径汇合", "tags": ["inside"], "annotation": "", "position": { "x": 800, "y": 100 } },
-    { "id": "f6", "domainId": "d-example", "content": "基本事实 6：已知 $x=1$", "tags": ["fact", "inside"], "annotation": "", "position": { "x": 800, "y": 360 } },
-    { "id": "c7", "domainId": "d-example", "content": "结论 7：命题得证", "tags": ["conclusion", "inside"], "annotation": "", "position": { "x": 1080, "y": 210 } }
+    { "id": "f1", "domainId": "d-example", "title": "加法交换律", "content": "基本事实 1：$a+b=b+a$", "tags": ["fact", "inside"], "annotation": "", "position": { "x": 20, "y": 30 } },
+    { "id": "u2", "domainId": "d-example", "title": "交换后", "content": "基本单位 2：交换后仍成立", "tags": ["inside"], "annotation": "", "position": { "x": 280, "y": 30 } },
+    { "id": "u3", "domainId": "d-example", "title": "整理同类项", "content": "基本单位 3：整理同类项", "tags": ["inside"], "annotation": "", "position": { "x": 280, "y": 170 } },
+    { "id": "u4", "domainId": "d-example", "title": "化简结果", "content": "基本单位 4：化简为最简式", "tags": ["conclusion", "inside"], "annotation": "", "position": { "x": 540, "y": 170 } },
+    { "id": "u5", "domainId": "d-example", "title": "两条路径", "content": "基本单位 5：两条路径汇合", "tags": ["inside"], "annotation": "", "position": { "x": 800, "y": 100 } },
+    { "id": "f6", "domainId": "d-example", "title": "已知条件", "content": "基本事实 6：已知 $x=1$", "tags": ["fact", "inside"], "annotation": "", "position": { "x": 800, "y": 360 } },
+    { "id": "c7", "domainId": "d-example", "title": "命题得证", "content": "结论 7：命题得证", "tags": ["conclusion", "inside"], "annotation": "", "position": { "x": 1080, "y": 210 } }
   ],
   "edges": [
     { "id": "e1", "source": "f1", "target": "u2", "direction": "single" },

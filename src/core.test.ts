@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { choiceFacts, defaults, proofRegion, resolveProof, routeToTarget, snapshot, topoOrder, validOrder, validateProof, type Notebook, type Tag } from './core';
 
-const unit = (id: string, tags: string[], content = id) => ({ id, domainId: 'd1', content, tags, annotation: '', position: { x: 0, y: 0 } });
+const unit = (id: string, tags: string[], content = id) => ({ id, domainId: 'd1', title: '', content, tags, annotation: '', position: { x: 0, y: 0 } });
 const link = (id: string, source: string, target: string, direction: 'single' | 'both' = 'single') => ({ id, source, target, direction });
 const note = (nodes: ReturnType<typeof unit>[], edges: ReturnType<typeof link>[]): Notebook => ({ kind: 'supernote', version: 1, id: 'notebook', title: '示例', domains: [{ id: 'd1', name: '示例域', position: { x: 0, y: 0 } }], nodes, edges, tags: structuredClone(defaults) as Tag[], proofs: [] });
 
 // 需求中的示例：F1->U2，F1->U3->U4，U2&U4->U5，U5|F6->C7。
 const sample = () => note(
-  [unit('F1', ['fact']), unit('F6', ['fact']), unit('U2', ['inside']), unit('U3', ['inside']), unit('U4', ['inside']), unit('U5', ['inside']), unit('C7', ['conclusion'])],
+  [unit('F1', ['fact']), unit('F6', ['fact']), unit('U2', ['inside']), unit('U3', ['inside']), unit('U4', ['conclusion']), unit('U5', ['inside']), unit('C7', ['conclusion'])],
   [link('e-u2', 'F1', 'U2'), link('e-u3', 'F1', 'U3'), link('e-u4', 'U3', 'U4'), link('e-u5a', 'U2', 'U5'), link('e-u5b', 'U4', 'U5'), link('e-c7a', 'U5', 'C7'), link('e-c7b', 'F6', 'C7')],
 );
 
@@ -33,8 +33,11 @@ describe('推导闭包', () => {
   });
 
   it('循环依赖会报告错误而不是死循环', () => {
-    const cyclic = note([unit('A', ['inside']), unit('B', ['inside'])], [link('e1', 'A', 'B'), link('e2', 'B', 'A')]);
-    expect(resolveProof(cyclic, 'A').error).not.toBe('');
+    const cyclic = note(
+      [unit('T', ['conclusion']), unit('U1', ['inside']), unit('U2', ['inside'])],
+      [link('e0', 'U1', 'T'), link('e1', 'U2', 'U1'), link('e2', 'U1', 'U2')],
+    );
+    expect(resolveProof(cyclic, 'T').error).not.toBe('');
     expect(topoOrder(['A', 'B'], [['A', 'B'], ['B', 'A']])).toBeNull();
   });
 });
@@ -54,6 +57,32 @@ describe('推导顺序', () => {
     expect(position('U2')).toBeLessThan(position('U5'));
     expect(position('U4')).toBeLessThan(position('U5'));
     expect(position('U5')).toBeLessThan(position('C7'));
+  });
+});
+
+describe('阶段性结论与事实目标', () => {
+  it('可以把结论设为起点，跳过更基础的前置', () => {
+    const result = resolveProof(sample(), 'C7', {}, ['U4']);
+    expect(result.nodes).toContain('U4');
+    expect(result.nodes).not.toContain('U3');
+    expect(result.order.at(-1)).toBe('C7');
+  });
+
+  it('以基本事实为目标时向前检索其他事实，并排除自身作为前提', () => {
+    const source = note(
+      [unit('F0', ['fact']), unit('F1', ['fact']), unit('U1', ['inside'])],
+      [link('e0', 'F1', 'F0'), link('e1', 'F1', 'U1'), link('e2', 'U1', 'F0')],
+    );
+    const result = resolveProof(source, 'F0');
+    expect([...result.nodes].sort()).toEqual(['F0', 'F1', 'U1']);
+    expect(result.deps.every(([from]) => from !== 'F0')).toBe(true);
+  });
+
+  it('目标本身不会成为自己的前置', () => {
+    const cyclic = note([unit('F0', ['fact']), unit('U1', ['inside'])], [link('a', 'F0', 'U1'), link('b', 'U1', 'F0')]);
+    const result = resolveProof(cyclic, 'F0');
+    expect([...result.nodes].sort()).toEqual(['F0', 'U1']);
+    expect(result.deps).toEqual([['U1', 'F0']]);
   });
 });
 

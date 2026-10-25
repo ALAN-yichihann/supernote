@@ -4,7 +4,7 @@ const point = z.object({ x: z.number().finite(), y: z.number().finite() });
 const identity = z.string().min(1).max(160);
 export const tagSchema = z.object({ id: identity, name: z.string().min(1), color: z.string().regex(/^#[0-9a-fA-F]{6}$/) });
 export const domainSchema = z.object({ id: identity, name: z.string().min(1), position: point });
-export const unitSchema = z.object({ id: identity, domainId: identity, content: z.string(), tags: z.array(identity), annotation: z.string().default(''), position: point, image: z.string().startsWith('data:image/').optional() });
+export const unitSchema = z.object({ id: identity, domainId: identity, title: z.string().default(''), content: z.string(), tags: z.array(identity), annotation: z.string().default(''), position: point, image: z.string().startsWith('data:image/').optional() });
 export const edgeSchema = z.object({ id: identity, source: identity, target: identity, direction: z.enum(['single', 'both']) });
 export const proofSchema = z.object({ kind: z.literal('supernote-proof'), version: z.literal(1), id: identity, title: z.string(), notebookId: identity, target: identity, nodeIds: z.array(identity), edgeIds: z.array(identity), order: z.array(identity).optional(), nodes: z.array(unitSchema), edges: z.array(edgeSchema) });
 export const noteSchema = z.object({ kind: z.literal('supernote'), version: z.literal(1), id: identity, title: z.string().min(1), domains: z.array(domainSchema), nodes: z.array(unitSchema), edges: z.array(edgeSchema), tags: z.array(tagSchema), proofs: z.array(proofSchema) });
@@ -76,8 +76,12 @@ export function proofRegion(n: Notebook, target: string): Set<string> {
     const id = stack.pop()!;
     if (seen.has(id) || !n.nodes.some(u => u.id === id)) continue;
     seen.add(id);
-    if (isFact(n, id)) continue;
-    for (const e of incomingLinks(n, id)) stack.push(linkPredecessor(e, id));
+    // 目标本身是基本事实时也继续向前检索，其他基本事实仍是终点。
+    if (id !== target && isFact(n, id)) continue;
+    for (const e of incomingLinks(n, id)) {
+      const pred = linkPredecessor(e, id);
+      if (pred !== target) stack.push(pred);
+    }
   }
   return seen;
 }
@@ -85,18 +89,21 @@ export function regionLinks(n: Notebook, region: Set<string>): Link[] {
   return n.edges.filter(e => region.has(e.source) && region.has(e.target));
 }
 
-// 推导闭包：结论单位任选一条入连接，其余单位必须满足全部入连接。
+// 推导闭包：结论单位任选一条入连接，普通单位必须满足全部入连接；
+// stops 中的阶段性结论直接作为起点，不再展开更基础的前置。
 export interface Resolution { nodes: string[]; edges: string[]; deps: [string, string][]; order: string[]; error: string }
-export function resolveProof(n: Notebook, target: string, choices: Record<string, string> = {}): Resolution {
+export function resolveProof(n: Notebook, target: string, choices: Record<string, string> = {}, stops: string[] = []): Resolution {
   const nodes = new Set<string>(), edges = new Set<string>(), deps: [string, string][] = [], stack = [target];
+  const stopSet = new Set(stops);
   while (stack.length) {
     const id = stack.pop()!;
     if (nodes.has(id)) continue;
     const unit = n.nodes.find(u => u.id === id);
     if (!unit) continue;
     nodes.add(id);
-    if (unit.tags.includes('fact')) continue;
-    const links = incomingLinks(n, id);
+    if (id !== target && unit.tags.includes('fact')) continue;
+    if (id !== target && stopSet.has(id)) continue;
+    const links = incomingLinks(n, id).filter(e => linkPredecessor(e, id) !== target);
     if (!links.length) continue;
     const chosen = isConclusion(n, id) ? [links.find(e => e.id === choices[id]) || links[0]] : links;
     for (const e of chosen) {

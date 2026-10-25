@@ -53,6 +53,7 @@ export function normalizeOperations(note: Notebook, raw: unknown): Operation[] {
     if (existing) {
       const unit: Unit = {
         ...existing,
+        title: typeof value.title === 'string' ? value.title : existing.title,
         content: typeof value.content === 'string' ? value.content : existing.content,
         tags: tags.length ? tags : existing.tags,
         annotation: typeof value.annotation === 'string' ? value.annotation : existing.annotation,
@@ -63,7 +64,7 @@ export function normalizeOperations(note: Notebook, raw: unknown): Operation[] {
     } else {
       const nextId = uid();
       idMap.set(id, nextId);
-      const unit: Unit = { id: nextId, domainId, content: text(value.content), tags: tags.length ? tags : ['inside'], annotation: text(value.annotation), position: nodePosition(units, domainId) };
+      const unit: Unit = { id: nextId, domainId, title: text(value.title), content: text(value.content), tags: tags.length ? tags : ['inside'], annotation: text(value.annotation), position: nodePosition(units, domainId) };
       units.push(unit);
       operations.push({ action: 'put', entity: 'nodes', id: nextId, value: unit });
     }
@@ -74,18 +75,23 @@ export function normalizeOperations(note: Notebook, raw: unknown): Operation[] {
     if (item.action !== 'put' || item.entity !== 'edges' || !object(item.value)) continue;
     const existing = links.find(link => link.id === String(item.id));
     if (existing) {
-      const value = { ...existing, direction: item.value.direction === 'both' ? 'both' as const : 'single' as const };
+      const touchesFact = units.find(unit => unit.id === existing.source)?.tags.includes('fact') || units.find(unit => unit.id === existing.target)?.tags.includes('fact');
+      const direction = item.value.direction === 'both' && !touchesFact ? 'both' as const : 'single' as const;
+      const value = { ...existing, direction };
       links[links.indexOf(existing)] = value;
       operations.push({ action: 'put', entity: 'edges', id: value.id, value });
       continue;
     }
     const source = mapId(item.value.source), target = mapId(item.value.target);
     if (!source || !target || source === target) continue;
-    if (!units.some(unit => unit.id === source) || !units.some(unit => unit.id === target)) continue;
+    const sourceUnit = units.find(unit => unit.id === source), targetUnit = units.find(unit => unit.id === target);
+    if (!sourceUnit || !targetUnit) continue;
+    // 基本事实只允许出连接：不能作为推导目标，双向连接也视为存在入边。
+    if (targetUnit.tags.includes('fact')) continue;
     const key = [source, target].sort().join('|');
     if (pairs.has(key)) continue;
     pairs.add(key);
-    const link: Link = { id: uid(), source, target, direction: item.value.direction === 'both' ? 'both' : 'single' };
+    const link: Link = { id: uid(), source, target, direction: item.value.direction === 'both' && !sourceUnit.tags.includes('fact') ? 'both' : 'single' };
     links.push(link);
     operations.push({ action: 'put', entity: 'edges', id: link.id, value: link });
   }

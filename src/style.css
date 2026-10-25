@@ -59,7 +59,13 @@
 .module-list li.dragging{opacity:.4}
 .module-index{display:grid;place-items:center;flex:0 0 auto;width:18px;height:18px;border-radius:50%;background:#e8f2ff;color:#3b7ac4;font-size:10px}
 .module-text{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.proof-path .generate{position:sticky;bottom:-1px;margin-top:10px;box-shadow:0 -8px 14px #fff}
+.proof-path .generate{margin-top:10px}
+/* 问题15：单位标题与阶段性结论起点 */
+.unit-title{display:block;margin:0 0 4px;color:#2c4f77;font-size:12px;line-height:1.3}
+.title-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.module-list li .module-text{flex:1;min-width:0}
+.stop-button{margin-left:auto;flex:0 0 auto;padding:2px 6px;border:1px solid #dce7f2;border-radius:5px;background:#fff;color:#8aa1b8;font-size:10px}
+.stop-button.active{border-color:#5e98dc;background:#edf5ff;color:#2e6db5}
 /* 问题11：右键菜单分组分隔线 */
 .menu-divider{height:1px;margin:5px 8px;background:#e7eef6}
 

@@ -4,13 +4,13 @@ import { applyOperations, defaults, type Notebook } from './core';
 
 const base = (): Notebook => ({
   kind: 'supernote', version: 1, id: 'notebook', title: '测试', domains: [{ id: 'd1', name: '域一', position: { x: 0, y: 0 } }],
-  nodes: [{ id: 'u1', domainId: 'd1', content: '已有单位', tags: ['fact'], annotation: '', position: { x: 40, y: 80 } }],
+  nodes: [{ id: 'u1', domainId: 'd1', title: '', content: '已有单位', tags: ['fact'], annotation: '', position: { x: 40, y: 80 } }],
   edges: [], tags: structuredClone(defaults), proofs: [],
 });
 
 const withLink = (): Notebook => {
   const note = base();
-  note.nodes.push({ id: 'u2', domainId: 'd1', content: '已有结论', tags: ['conclusion'], annotation: '', position: { x: 420, y: 80 } });
+  note.nodes.push({ id: 'u2', domainId: 'd1', title: '', content: '已有结论', tags: ['conclusion'], annotation: '', position: { x: 420, y: 80 } });
   note.edges.push({ id: 'e1', source: 'u1', target: 'u2', direction: 'single' });
   return note;
 };
@@ -58,5 +58,20 @@ describe('AI 图谱操作规范化', () => {
     const operations = normalizeOperations(source, [{ action: 'delete', entity: 'edges', id: 'e1' }]);
     expect(operations).toEqual([{ action: 'delete', entity: 'edges', id: 'e1' }]);
     expect(applyOperations(source, operations).edges).toHaveLength(0);
+  });
+
+  it('保留新单位的标题', () => {
+    const operations = normalizeOperations(base(), [{ action: 'put', entity: 'nodes', id: 'n1', value: { domainId: 'd1', title: '新标题', content: '正文' } }]);
+    const next = applyOperations(base(), operations);
+    expect(next.nodes.find(unit => unit.id !== 'u1')?.title).toBe('新标题');
+  });
+
+  it('跳过指向基本事实的连接，并把事实的双向连接降为单向', () => {
+    const source = withLink();
+    const operations = normalizeOperations(source, [
+      { action: 'put', entity: 'edges', id: 'bad', value: { source: 'u2', target: 'u1', direction: 'single' } },
+      { action: 'put', entity: 'edges', id: 'both', value: { source: 'u1', target: 'u2', direction: 'both' } },
+    ]);
+    expect(operations).toEqual([]);
   });
 });
